@@ -22,6 +22,6 @@ Submit a bug report or feature request on the [issues page](https://github.com/r
 
 License
 -------
-This is free software licensed under the LGPLv3 License. For more details see the [LICENSE](https://github.com/rbooth200/drift_composition//blob/master/LICENSE).
+This is free software licensed under the GPLv3 License. For more details see the [LICENSE](https://github.com/rbooth200/drift_composition//blob/master/LICENSE).
 
 © Copyright 2023 Richard Booth
