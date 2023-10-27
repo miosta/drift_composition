@@ -14,10 +14,11 @@ To see how the code can be used to compute the composition of a protoplanetary d
 
 Authors
 -------
- - Richard Booth (University of Leeds) <https://github.com/rbooth200>`_
+ - Richard Booth (University of Leeds) <https://github.com/rbooth200>
 
-### Contact ###
-Submit a bug report or feature request on the [issues page](https://github.com/rbooth200/drift_composition/issues). For anything else, feel free to [email me](mailto:r.a.booth@leeds.ac.uk)
+Contact
+-------
+Submit a bug report or feature request on the [issues page](https://github.com/rbooth200/drift_composition/issues). For anything else, feel free to [email me](mailto:r.a.booth@leeds.ac.uk).
 
 License
 -------
