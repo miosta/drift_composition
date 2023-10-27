@@ -1,0 +1,7 @@
+include README.md AUTHORS.rst HISTORY.rst LICENSE
+global-include chem_props_OW19.txt proto_solar.dat
+prune docs
+prune .ci
+exclude .clang-format
+exclude .gitattributes
+exclude .gitignore
