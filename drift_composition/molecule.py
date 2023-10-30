@@ -35,7 +35,7 @@ class Molecule:
     T_bind : float, unit=K
         Binding energy represented in K
     nu_des : float, optional. unit=s^-1
-        Desorption frequency parameter. If not provided then esimate will be
+        Desorption frequency parameter. If not provided then an esimate will be
         used instead.
     """
     def __init__(self, name, T_bind, nu_des=None, ref=None):
