@@ -32,10 +32,11 @@ class Molecule:
     ----------
     name : string
         Molecular formulation for the molecule, e.g. CO
-    nu_des : float, unit=s^-1
-        Desorption frequency parameter
     T_bind : float, unit=K
         Binding energy represented in K
+    nu_des : float, optional. unit=s^-1
+        Desorption frequency parameter. If not provided then esimate will be
+        used instead.
     """
     def __init__(self, name, T_bind, nu_des=None, ref=None):
         self._name = name
