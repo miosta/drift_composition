@@ -23,7 +23,7 @@ import numpy as np
 import os
 
 from drift_composition.atoms import molecule_mass, atoms_in_molecule
-from drift_composition.constants import m_hydrogen
+from drift_composition.constants import m_hydrogen, k_boltzmann
 
 class Molecule:
     """Wrapper for molecular properties
@@ -37,11 +37,14 @@ class Molecule:
     T_bind : float, unit=K
         Binding energy represented in K
     """
-    def __init__(self, name, nu_des, T_bind, ref=None):
+    def __init__(self, name, T_bind, nu_des=None, ref=None):
         self._name = name
         self._mass_amu = molecule_mass(name)
         self._nu_des = nu_des
         self._T_bind = T_bind
+
+        if nu_des is None:
+            self.use_nu_des_approx()
 
         self._ref = ref
 
@@ -77,6 +80,10 @@ class Molecule:
     def reference(self):
         """Refernce for data"""
         return self._ref
+    
+    def use_nu_des_approx(self, N_bind=1e15):
+        """Harmonic oscillator approximation from Hasegawa et al. (1992)"""
+        self._nu_des =  np.sqrt(2*N_bind*k_boltzmann*self.T_bind/(np.pi**2 * self.mass))
 
 
 def get_molecular_properties(data_file=None):
@@ -103,8 +110,12 @@ def get_molecular_properties(data_file=None):
     data = np.genfromtxt(data_file, dtype=('S10', 'f8', 'f8', 'f8', 'S14'))
     molecules, abundance = [], []
     for line in data:
+        nu_des = line[2] 
+        if nu_des <= 0 or np.isnan(nu_des):
+            nu_des = None
+
         molecules.append(
-            Molecule(line[0].decode("ascii"), line[2], line[3], line[4].decode("ascii"))
+            Molecule(line[0].decode("ascii"),  line[3], nu_des, line[4].decode("ascii"))
         )
         abundance.append(line[1])
     
