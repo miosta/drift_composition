@@ -21,6 +21,7 @@
 Functions defining properties of atoms and decomposing molecules into 
 their components.
 """
+import os
 from collections import defaultdict
 import re
 import numpy as np
@@ -84,9 +85,13 @@ def molecule_mass(mol):
         mass += atoms[atom] * ELEMENT_MASS[atom]
     return mass
 
-def load_protosolar_abundances():
+def load_protosolar_abundances(data_file=None):
     """The (proto)-solar abundances from Asplund."""
-    data = np.genfromtxt('proto_solar.dat', dtype=('i4', 'S2', 'f8', 'f8'))
+    if data_file is None:
+        data_file = os.path.join(
+            os.path.dirname(__file__), 'proto_solar.dat' 
+        )
+    data = np.genfromtxt(data_file, dtype=('i4', 'S2', 'f8', 'f8'))
     
     elements, abundances = [], []
     for item in data:

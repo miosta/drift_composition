@@ -194,10 +194,9 @@ class DiscModel:
             ratio = \
                 des(Sig_d[-1] * mass_frac, Sig_d[-1], T[-1], H[-1], size[-1])[0] / \
                 ads(Sig_d[-1] * 0,         Sig_d[-1], T[-1], H[-1], size[-1])[0]
-                        
+            
             Mdot_vapor = self.Mdot_gas * (ratio / (1 + ratio)) * mass_frac
-            Mdot_ice  = self.Mdot_dust * (  1   / (1 + ratio)) * mass_frac * \
-                self.Mdot_dust / (self.Mdot_gas*d2g)
+            Mdot_ice  = self.Mdot_dust * (  1   / (1 + ratio)) * mass_frac / d2g
             
             # Since the desorption rate is non-linear we need to solve for
             # the surface density via iteration. The system may be written as:
@@ -243,13 +242,16 @@ class DiscModel:
             self._Sigma_mol[mol.name] = Sigma.reshape(-1,2)
         self._molecules = self._molecules.union(set(molecules))
 
-    def compute_elemental_column(self, dust='MgFeSiO4'):
+    def compute_elemental_column(self, dust=None):
         """Compute the column density of each element.
         
         Parameters
         ----------
-        dust : string, default='MgFeSiO4'
-            Composition of the dust grains. If None, the solid composition is
+        dust : dict, default=None
+            Composition of the dust grains, in the form
+                { molecule : abundance}. 
+            Only the relative abundances are needed as everything is scaled to
+            the total mass.  If None, the solid composition is computed using
             the ice composition only.
 
         Returns
@@ -280,10 +282,41 @@ class DiscModel:
 
         # Compute the dust column:
         if dust:
-            elements = atoms_in_molecule(dust)
-            m_dust = molecule_mass(dust) * m_hydrogen
-            for el in elements:
-                column[el][:,1] += elements[el] * self.Sigma_dust / m_dust
+            m_dust = 0
+            for mol in dust:
+                m_dust += molecule_mass(mol) * m_hydrogen * dust[mol] 
+            for mol in dust:            
+                elements = atoms_in_molecule(mol)
+                for el in elements:
+                    column[el][:,1] += elements[el] * dust[mol] * self.Sigma_dust / m_dust
+
+        return column
+
+    def compute_molecular_column(self):
+        """Compute the column density of each molecule.
+
+        Returns
+        -------
+        column : dict, units=cm^-2
+            The column density of each molecule included.
+
+        Notes
+        -----
+        The hydrogen column is always computed directly from the gas surface 
+        density and the mean molecular weight.
+        """
+        # Compute column density of each num
+        column = defaultdict(lambda : np.zeros([self._grid.size, 2], dtype='f8'))
+        for mol in self._molecules:
+            column[mol.name] = self._Sigma_mol[mol.name] / mol.mass
+
+        # Compute the H2 column
+        H = np.zeros([self._grid.size, 2], dtype='f8')
+
+        xHe = (0.5*self._mu - 1) / (4 - self._mu)
+        H[:, 0] = self.Sigma_gas / (self._mu*m_hydrogen*(1 + xHe))
+
+        column['H2'] = H / 2
 
         return column
     
@@ -326,5 +359,5 @@ class DiscModel:
     
     @property
     def Mdot_dust(self):
-        return self._Mdot
+        return self._Mdot_dust
     
