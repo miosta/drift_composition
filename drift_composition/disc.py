@@ -116,8 +116,8 @@ class DiscModel:
         ----------
         Mdot_dust : float, units=Msun/year
             Accretion rate of dust
-        St : float or array, shape=grid.size+1
-            Stokes number of the dust
+        St : callable,
+            Stokes number as a function of radius.
         Sc : float (default=1) or array, shape=grid.size+1
             Schmidt Number determining dust diffusion coefficient D = nu/Sc
         
@@ -128,7 +128,7 @@ class DiscModel:
         g = self._grid
         FV = FV_Model(g, self._stencil)
 
-        mat = FV.create_advection_matrix(self.v_dust(g.Re, St)) \
+        mat = FV.create_advection_matrix(self.v_dust(g.Re, St(g.Re))) \
             + FV.create_diffusion_matrix(self.nu(g.Re)/Sc, S=self._Sigma_gas)
         
         source = np.zeros_like(g.Rc)
@@ -166,7 +166,7 @@ class DiscModel:
 
         # Create transport matrices
         v_gas  = self.v_gas(g.Re)
-        v_dust = self.v_dust(g.Re, self.Stokes)
+        v_dust = self.v_dust(g.Re, self.Stokes(g.Re))
         D = self.nu(g.Re)/self.Schmidt
 
         transport = \
@@ -177,7 +177,7 @@ class DiscModel:
         
         # Set the grain properties
         grains = GrainModel()
-        size = (2/np.pi)* self.Stokes * self.Sigma_gas / grains.rho
+        size = (2/np.pi)* self.Stokes(g.Rc) * self.Sigma_gas / grains.rho
         T, H = self._T(g.Rc), self.aspect_ratio(g.Rc)*g.Rc
         Sig_d = self.Sigma_dust
 
