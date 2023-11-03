@@ -22,6 +22,7 @@ Grid structure for the disc
 import numpy as np
 from drift_composition.reconstruct import compute_centroids
 
+
 class Grid:
     """
     Basic grid structure for a disc.
@@ -35,26 +36,26 @@ class Grid:
     N : integer
         Number of cells to use
     """
-    def __init__(self, R_in, R_out, N):
 
-        self.Re = np.geomspace(R_in, R_out, N+1)
+    def __init__(self, R_in, R_out, N):
+        self.Re = np.geomspace(R_in, R_out, N + 1)
         self.Rc = compute_centroids(self.Re, self.order)
 
     @property
     def cell_vol(self):
         """Volume of the cells"""
         return np.pi * np.diff(self.Re**2)
-    
+
     @property
     def face_area(self):
         """Area of the cell faces"""
         return 2 * np.pi * self.Re
-    
+
     @property
     def size(self):
         """Number of cells"""
         return len(self.Rc)
-    
+
     @property
     def order(self):
         """Order of the volume element: dV ~ R^order dR"""

@@ -25,9 +25,10 @@ import os
 from drift_composition.atoms import molecule_mass, atoms_in_molecule
 from drift_composition.constants import m_hydrogen, k_boltzmann
 
+
 class Molecule:
     """Wrapper for molecular properties
-    
+
     Parameters
     ----------
     name : string
@@ -38,6 +39,7 @@ class Molecule:
         Desorption frequency parameter. If not provided then an esimate will be
         used instead.
     """
+
     def __init__(self, name, T_bind, nu_des=None, ref=None):
         self._name = name
         self._mass_amu = molecule_mass(name)
@@ -56,40 +58,42 @@ class Molecule:
     def name(self):
         """Name of the molecule (chemical formula)"""
         return self._name
-    
+
     @property
     def mass_amu(self):
         """Mass in atomic mass units"""
         return self._mass_amu
-    
+
     @property
     def mass(self):
         """Mass in atomic mass units"""
-        return self._mass_amu*m_hydrogen
-    
-    @property 
+        return self._mass_amu * m_hydrogen
+
+    @property
     def nu(self):
         """Desorbtion frequency parameter"""
         return self._nu_des
-    
-    @property 
+
+    @property
     def T_bind(self):
         """Binding Energy in K"""
         return self._T_bind
-    
-    @property 
+
+    @property
     def reference(self):
         """Refernce for data"""
         return self._ref
-    
+
     def use_nu_des_approx(self, N_bind=1e15):
         """Harmonic oscillator approximation from Hasegawa et al. (1992)"""
-        self._nu_des =  np.sqrt(2*N_bind*k_boltzmann*self.T_bind/(np.pi**2 * self.mass))
+        self._nu_des = np.sqrt(
+            2 * N_bind * k_boltzmann * self.T_bind / (np.pi**2 * self.mass)
+        )
 
 
 def get_molecular_properties(data_file=None):
     """Load the properties of molecules from a data file
-    
+
     Parameters
     ----------
     data_file : string=default=None
@@ -104,20 +108,18 @@ def get_molecular_properties(data_file=None):
         Number abundance relative to hydrogen for the molecules.
     """
     if data_file is None:
-        data_file = os.path.join(
-            os.path.dirname(__file__), 'chem_props_OW19.txt' 
-        )
+        data_file = os.path.join(os.path.dirname(__file__), "chem_props_OW19.txt")
 
-    data = np.genfromtxt(data_file, dtype=('S10', 'f8', 'f8', 'f8', 'S14'))
+    data = np.genfromtxt(data_file, dtype=("S10", "f8", "f8", "f8", "S14"))
     molecules, abundance = [], []
     for line in data:
-        nu_des = line[2] 
+        nu_des = line[2]
         if nu_des <= 0 or np.isnan(nu_des):
             nu_des = None
 
         molecules.append(
-            Molecule(line[0].decode("ascii"),  line[3], nu_des, line[4].decode("ascii"))
+            Molecule(line[0].decode("ascii"), line[3], nu_des, line[4].decode("ascii"))
         )
         abundance.append(line[1])
-    
+
     return molecules, abundance
