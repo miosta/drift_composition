@@ -22,13 +22,12 @@ grains.
 """
 import numpy as np
 
-from drift_composition.constants import (
-    k_boltzmann, m_hydrogen
-)
+from drift_composition.constants import k_boltzmann, m_hydrogen
+
 
 class GrainModel:
     """Model for the grain properties
-    
+
     Parameters
     ----------
     a_min : float, default=1e-5, unit=cm
@@ -39,14 +38,15 @@ class GrainModel:
         Slope of the grain size density n(a)da ~ a^-q da
     N_bind : float, default=1e15, unit=cm^-2
         Number of binding sites per unit area of the grain surface
-    
+
     Notes
     -----
     Assumes compact spherical grains
     """
+
     def __init__(self, a_min=1e-5, rho=1, q=3.5, N_bind=1e15):
         self._a0 = a_min
-        self._rho = rho 
+        self._rho = rho
         self._q = q
         self._N_bind = N_bind
 
@@ -54,22 +54,27 @@ class GrainModel:
         """Get the average area of the grains"""
         q = self._q
         a_min = self._a0
-        area = np.pi * (a_max**(3+q) - a_min**(3+q)) / (3+q)
-        N = (a_max**(1+q) - a_min**(1+q)) / (1+q)
-        return area / N
-    
+
+        area = (a_max ** (3 + q) - a_min ** (3 + q)) / (3 + q)
+        N = (a_max ** (1 + q) - a_min ** (1 + q)) / (1 + q)
+
+        return np.pi * area / N
+
     def mass(self, a_max):
         """Get the average mass of the grains"""
         q = self._q
         a_min = self._a0
-        mass = 4 * np.pi * self._rho /3 * (a_max**(4+q) - a_min**(4+q)) / (4+q)
-        N = (a_max**(1+q) - a_min**(1+q)) / (1+q)
-        return mass / N 
-    
+
+        mass = (a_max ** (4 + q) - a_min ** (4 + q)) / (4 + q)
+        N = (a_max ** (1 + q) - a_min ** (1 + q)) / (1 + q)
+
+        return (4 * np.pi * self._rho / 3) * mass / N
+
     @property
     def rho(self):
         """Internal density of the grain"""
         return self._rho
+
     @property
     def N_bind(self):
         """Number of binding sites per unit area"""
@@ -79,16 +84,16 @@ class GrainModel:
     def a_min(self):
         """Minimum grain size"""
         return self._a0
-    
+
     @property
     def q(self):
         """Slope of the grain size distribution"""
         return self._q
-    
+
 
 class AdsorptionRate:
     """Model for themal adsorption onto grains.
-    
+
     Parameters
     ----------
     species : Molecule object
@@ -103,6 +108,7 @@ class AdsorptionRate:
     Assumes that the dust grains are settled to the mid-plane and
     the gas is spread of the disc.
     """
+
     def __init__(self, species, grain, p_stick=1):
         self._species = species
         self._grain = grain
@@ -122,37 +128,37 @@ class AdsorptionRate:
         H : float or array
             Disc vertical scale-height
         a_max : float or array
-            Maximum size of the grains  
-        
+            Maximum size of the grains
+
         Returns
         -------
         rate : float or array
-            The adsorption rate of the molecule per unit surface density of 
+            The adsorption rate of the molecule per unit surface density of
             the molecule
         jac : float or array
             The derivative of rate with respect to the log(Sigma_mol)
         """
-        v = np.sqrt(8*k_boltzmann*T/(np.pi*self._species.mass))
-        
+        v = np.sqrt(8 * k_boltzmann * T / (np.pi * self._species.mass))
+
         n_grain = Sigma_dust / self._grain.mass(a_max)
         area = self._grain.area(a_max)
 
-        rate = n_grain * v * area / (np.sqrt(2*np.pi)*H)
+        rate = n_grain * v * area / (np.sqrt(2 * np.pi) * H)
 
-        return rate, 0*rate
-    
+        return rate, 0 * rate
+
     @property
     def species(self):
         return self._species
+
     @property
     def grain(self):
         return self._grain
-    
 
 
 class ThermalDesorbtionRate:
     """Model for themal desorption onto grains.
-    
+
     Parameters
     ----------
     species : Molecule object
@@ -167,6 +173,7 @@ class ThermalDesorbtionRate:
     Assumes that the dust grains are settled to the mid-plane and
     the gas is spread of the disc.
     """
+
     def __init__(self, species, grain):
         self._species = species
         self._grain = grain
@@ -185,27 +192,25 @@ class ThermalDesorbtionRate:
         H : float or array
             Disc vertical scale-height
         a_max : float or array
-            Maximum size of the grains  
-        
+            Maximum size of the grains
+
         Returns
         -------
         rate : float or array
-            The thermal desorption rate of the molecule per unit surface 
+            The thermal desorption rate of the molecule per unit surface
             density of the molecule
         jac : float or array
             The derivative of rate with respect to the log(Sigma_mol)
         """
-        R = self._species.nu * np.exp(-self._species.T_bind/T)
-         
+        R = self._species.nu * np.exp(-self._species.T_bind / T)
+
         n_grain = Sigma_dust / self._grain.mass(a_max)
         area = self._grain.area(a_max)
 
-        mass_per_layer = n_grain*area*self._grain.N_bind*self._species.mass
+        mass_per_layer = n_grain * area * self._grain.N_bind * self._species.mass
         num_layers = Sigma_mol / mass_per_layer
 
         # Only the top layer is active
-        rate =  R              / (1 + num_layers)
-        jac  = -R * num_layers / (1 + num_layers)**2
+        rate = R / (1 + num_layers)
+        jac = -R * num_layers / (1 + num_layers) ** 2
         return rate, jac
-
-
