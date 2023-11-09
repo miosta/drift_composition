@@ -140,8 +140,10 @@ def mass_growth(planet, p_env, disc, T, dt):
     mol_names = list(molg.keys())
 
     for mol in mol_names:
-        dm_mol = dm_peb*(mold[mol]/sd) + dm_gas*(molg[mol]/sg)
-        mol_comp[mol] = mol_comp[mol] + dm_mol*dt
+        dm_mol_g = dm_gas*(molg[mol]/sg)
+        dm_mol_d = dm_peb*(mold[mol]/sd)
+        mol_comp[mol][0] = mol_comp[mol][0] + dm_mol_g*dt
+        mol_comp[mol][1] = mol_comp[mol][1] + dm_mol_d*dt
         #mass = planet.mass+dm*dt
 
     new_planet = Planet(mc+mg, mc, mg, mol_comp, planet.dist)
