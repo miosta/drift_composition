@@ -197,13 +197,19 @@ class DiscModel:
             mass_frac = abund * mol.mass_amu / (1 + mHe)
             # Estimate the fraction of each molecule on the grain surface
             # and use to specify the accretion rates
-            ratio = (
-                des(Sig_d[-1] * mass_frac, Sig_d[-1], T[-1], H[-1], size[-1])[0]
-                / ads(Sig_d[-1] * 0, Sig_d[-1], T[-1], H[-1], size[-1])[0]
-            )
+            if mol.p_stick > 0:
+                ratio = (
+                    des(Sig_d[-1] * mass_frac, Sig_d[-1], T[-1], H[-1], size[-1])[0]
+                    / ads(Sig_d[-1] * 0, Sig_d[-1], T[-1], H[-1], size[-1])[0]
+                )
+                f_gas = ratio / (1 + ratio)
+                f_dust = 1 / (1 + ratio)
+            else:
+                f_gas = 0
+                f_dust = 1
 
-            Mdot_vapor = self.Mdot_gas * (ratio / (1 + ratio)) * mass_frac
-            Mdot_ice = self.Mdot_dust * (1 / (1 + ratio)) * mass_frac / d2g
+            Mdot_vapor = self.Mdot_gas * f_gas * mass_frac
+            Mdot_ice = self.Mdot_dust * f_dust * mass_frac / d2g
 
             # Since the desorption rate is non-linear we need to solve for
             # the surface density via iteration. The system may be written as:

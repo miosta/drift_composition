@@ -1,12 +1,13 @@
-# Species Abundace nu_des T_bind Ref
-H2O       1.6e-4   4.0e13 5800   Fraser_2001
-CO2       4.0e-5   1.0e13 2700   Sandford_1990
-CO        8.0e-5   7.0e11 1180   Fayolle_2016
-C2H6      1.5e-5   6.0e16 2500   Behmard_2019
-CH3OH     0.0e-0   -1     4930   Penteado_2017
-N2        3.0e-5   8.0e11 1050   Fayolle_2016
-NH3       7.0e-6   1.0e13 3800   Suhasaria_2015
-He        9.5e-2   -1     100    Penteado_2017
-Ar        2.5e-6   6.0e11 870    Smith_2016
-Kr        1.8e-9   1.2e14 1380   Smith_2016
-Xe        1.7e-10  4.6e14 1970   Smith_2016
+# Species Abundace nu_des T_bind order p_stick  Ref
+H2O       1.6e-4   4.0e13 5800   0     1.0      Fraser_2001
+CO2       4.0e-5   1.0e13 2700   0     1.0      Sandford_1990
+CO        8.0e-5   7.0e11 1180   0     1.0      Fayolle_2016
+C2H6      1.5e-5   6.0e16 2500   0     1.0      Behmard_2019
+CH3OH     0.0e-0   -1     4930   0     1.0      Penteado_2017
+N2        3.0e-5   8.0e11 1050   0     1.0      Fayolle_2016
+NH3       7.0e-6   1.0e13 3800   0     1.0      Suhasaria_2015
+He        9.5e-2   -1     100    0     1.0      Penteado_2017
+Ar        2.5e-6   6.0e11 870    0     1.0      Smith_2016
+Kr        1.8e-9   1.2e14 1380   0     1.0      Smith_2016
+Xe        1.7e-10  4.6e14 1970   0     1.0      Smith_2016
+C4H10     0.0e-0   4.0e13 19050  1     0.0      Gail_2017

@@ -109,10 +109,9 @@ class AdsorptionRate:
     the gas is spread of the disc.
     """
 
-    def __init__(self, species, grain, p_stick=1):
+    def __init__(self, species, grain):
         self._species = species
         self._grain = grain
-        self._p_stick = p_stick
 
     def __call__(self, Sigma_mol, Sigma_dust, T, H, a_max):
         """Compute the thermal adsorption rate.
@@ -143,7 +142,7 @@ class AdsorptionRate:
         n_grain = Sigma_dust / self._grain.mass(a_max)
         area = self._grain.area(a_max)
 
-        rate = n_grain * v * area / (np.sqrt(2 * np.pi) * H)
+        rate = n_grain * v * area * self._species.p_stick / (np.sqrt(2 * np.pi) * H)
 
         return rate, 0 * rate
 
@@ -165,13 +164,11 @@ class ThermalDesorbtionRate:
         Molecule we are interested in.
     grain : GrainModel
         Properties of the dust grains
-    p_stick : float, default=1
-        Probability that dust-gas collisions lead to sticking
 
     Notes
     -----
     Assumes that the dust grains are settled to the mid-plane and
-    the gas is spread of the disc.
+    the gas is spread throughout the disc vertically.
     """
 
     def __init__(self, species, grain):
@@ -207,10 +204,11 @@ class ThermalDesorbtionRate:
         n_grain = Sigma_dust / self._grain.mass(a_max)
         area = self._grain.area(a_max)
 
-        mass_per_layer = n_grain * area * self._grain.N_bind * self._species.mass
-        num_layers = Sigma_mol / mass_per_layer
+        num_layers = 0
+        if self._species.order == 0:  # Only the top layer is active
+            mass_per_layer = n_grain * area * self._grain.N_bind * self._species.mass
+            num_layers = Sigma_mol / mass_per_layer
 
-        # Only the top layer is active
         rate = R / (1 + num_layers)
         jac = -R * num_layers / (1 + num_layers) ** 2
         return rate, jac
