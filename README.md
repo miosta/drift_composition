@@ -7,6 +7,11 @@ You can install the code with `pip`
 ```
 python -m pip install .
 ```
+If you want to be able to edit the source file you may find it convenient to pass the `-e` flag to `pip`:
+```
+python -m pip install -e .
+```
+
 
 Getting started
 ---------------

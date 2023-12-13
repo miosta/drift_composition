@@ -28,6 +28,7 @@ G_Msun = 1.32712442099e26
 G_Newton = 6.67430e-8
 Msun = G_Msun / G_Newton
 Rsun = 6.96340e10
+Lsun = 3.846e33
 
 m_hydrogen = 1.6735575e-24
 k_boltzmann = 1.380649e-16
