@@ -163,7 +163,7 @@ def plot_planet_comp(masses,mcs,mgs,mco_g,mco_d,rr,Nt,dt,title=''):
 def lecture_plot():
     Mdot_gas = 1e-8
     Mdot_dust = 1e-9
-    Stokes = 0.01
+    Stokes = lambda R: 0.01
 
     T = lambda R: 150*(R/Rau)**-0.5
     alpha = lambda R: 1e-3
@@ -203,7 +203,7 @@ def lecture_plot():
 def main():
     Mdot_gas = 1e-8
     Mdot_dust = 1e-9
-    Stokes = 0.01
+    Stokes = lambda R: 0.01
 
     T = lambda R: 150*(R/Rau)**-0.5
     alpha = lambda R: 1e-3
@@ -257,7 +257,7 @@ def main():
     rrs2=np.zeros(Nt)
 
     f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
-    planet = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 7*Rau)
+    planet = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 8*Rau)
     planet_evo = std_mig_comp(planet, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
     
     ms3 = [p.mass for p in planet_evo]

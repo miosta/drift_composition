@@ -82,11 +82,11 @@ class PlanetEnv:
         return sig_H2 + sg_tot , sig_Si + sd_tot
 
     def Stokes(self, disc, dist):
-        st = disc.Stokes
+        st = disc.Stokes(self.grid.Re)
         if np.isscalar(st):
             stokes = st
         else:
-            stokes = loc_disc(st, self.grid.Re, dist)
+            stokes = loc_disc(st, self.grid.R, dist)
         return stokes
 
     def vk(self, dist):
