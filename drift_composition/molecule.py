@@ -33,18 +33,29 @@ class Molecule:
     ----------
     name : string
         Molecular formulation for the molecule, e.g. CO
+    nu_des : float, optional. unit=s^-1
+        Desorption frequency parameter. If not provided then an estimate will be
+        used instead.
     T_bind : float, unit=K
         Binding energy represented in K
-    nu_des : float, optional. unit=s^-1
-        Desorption frequency parameter. If not provided then an esimate will be
-        used instead.
+    order : int, default=0
+        Order of the desorption rate in the multi-layer regime, see below.
+    p_stick : float, default=1
+        Probability of sticking in molecule-grain collisions
+    ref : string, optional
+        Reference string
     """
 
-    def __init__(self, name, T_bind, nu_des=None, ref=None):
+    def __init__(self, name, nu_des=None, T_bind=0, order=0, p_stick=1, ref=None):
         self._name = name
         self._mass_amu = molecule_mass(name)
         self._nu_des = nu_des
         self._T_bind = T_bind
+        self._order = order
+        self._p_stick = p_stick
+
+        if order not in {0, 1}:
+            raise ValueError("Only order=0 or order=1 is supported")
 
         if nu_des is None:
             self.use_nu_des_approx()
@@ -80,6 +91,16 @@ class Molecule:
         return self._T_bind
 
     @property
+    def order(self):
+        """Order of the desorption reaction rate"""
+        return self._order
+
+    @property
+    def p_stick(self):
+        """Sticking probability"""
+        return self._p_stick
+
+    @property
     def reference(self):
         """Refernce for data"""
         return self._ref
@@ -110,7 +131,7 @@ def get_molecular_properties(data_file=None):
     if data_file is None:
         data_file = os.path.join(os.path.dirname(__file__), "chem_props_OW19.txt")
 
-    data = np.genfromtxt(data_file, dtype=("S10", "f8", "f8", "f8", "S14"))
+    data = np.genfromtxt(data_file, dtype=("S10", "f8", "f8", "f8", "i4", "f8", "S14"))
     molecules, abundance = [], []
     for line in data:
         nu_des = line[2]
@@ -118,7 +139,14 @@ def get_molecular_properties(data_file=None):
             nu_des = None
 
         molecules.append(
-            Molecule(line[0].decode("ascii"), line[3], nu_des, line[4].decode("ascii"))
+            Molecule(
+                line[0].decode("ascii"),
+                nu_des,
+                line[3],
+                line[4],
+                line[5],
+                line[6].decode("ascii"),
+            )
         )
         abundance.append(line[1])
 

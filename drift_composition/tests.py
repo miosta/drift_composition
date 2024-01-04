@@ -46,24 +46,27 @@ def test_reconstruct():
     ### Run a test interpolation / derivative
 
     # Volume average of 1/x^2
-    Vx = 0.5 * (xi[1:] ** 2 - xi[:-1] ** 2)
+    Vx = 0.5 * np.diff(xi**2)
     fx = np.log(xi[1:] / xi[:-1]) / Vx
 
     # Check interpolation and derivaives of 1/x^2
     stencil = np.arange(-2, 2)
     w_mat = build_sparse_matrix(w[:, 0], stencil)
-    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], 1 / xi[2:-2] ** 2, rtol=2e-6)
-    np.testing.assert_allclose(w_mat.dot(fx)[0], 1 / xi[0] ** 2, rtol=2e-3)
+
+    x = xi[2:-2]
+    x0 = xi[0]
+    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], 1 / x**2, rtol=2e-6)
+    np.testing.assert_allclose(w_mat.dot(fx)[0], 1 / x0**2, rtol=2e-3)
 
     w_mat = build_sparse_matrix(w[:, 1], stencil)
-    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], -2 / xi[2:-2] ** 3, rtol=2e-6)
-    np.testing.assert_allclose(w_mat.dot(fx)[0], -2 / xi[0] ** 3, rtol=7e-2)
+    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], -2 / x**3, rtol=2e-6)
+    np.testing.assert_allclose(w_mat.dot(fx)[0], -2 / x0**3, rtol=7e-2)
 
     w_mat = build_sparse_matrix(w[:, 2], stencil)
-    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], 6 / xi[2:-2] ** 4, rtol=3e-3)
+    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], 6 / x**4, rtol=3e-3)
 
     w_mat = build_sparse_matrix(w[:, 3], stencil)
-    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], -24 / xi[2:-2] ** 5, rtol=3e-4)
+    np.testing.assert_allclose(w_mat.dot(fx)[2:-2], -24 / x**5, rtol=3e-4)
 
 
 def test_adv_diff():
