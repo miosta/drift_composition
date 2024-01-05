@@ -2,77 +2,11 @@ from drift_composition.constants import Mearth, Msun, Rau, yr
 from drift_composition.grid import Grid
 from drift_composition.disc import DiscModel
 from drift_composition.molecule import get_molecular_properties
-from drift_composition.dumb_planet import Planet, PlanetEnv
-import drift_composition.dumb_planet as dumb
+from drift_composition.simple_planet import Planet, PlanetEnv
+from drift_composition.atoms import atoms_in_molecule, ELEMENT_MASS
+import drift_composition.simple_planet as dumb
 import matplotlib.pyplot as plt
 import numpy as np
-
-def std_mig(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
-    masses = [planet.mass]
-    mcs = [planet.mc]
-    mgs = [planet.mg]
-    mco_g = [planet.f_comp[comp][0]]
-    mco_d = [planet.f_comp[comp][1]]
-    rr = [planet.dist]
-    for nn in range(nt-1):
-        #if nn > nt-100:
-        #    TT = lambda R: 150*(R/Rau)**-0.5
-        #    alp = lambda R: p_env.alpha
-        #    DM = DiscModel(grid, Mdot_gas*(1-(nn-nt+100)/100), alp, TT)
-        #    DM.compute_dust_surface_density(Mdot_dust, Stokes)
-        #    print( Mdot_gas*(1-(nn-nt+100)/100))
-        planet = dumb.mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
-        planet.dist = np.max((dumb.mig_planet(planet, p_env, DM, T, dt) ,1e-6*Rau))
-        if planet.dist < 1e-3*Rau:
-            print('accreted')
-        masses.append(planet.mass)
-        mcs.append(planet.mc)
-        mgs.append(planet.mg)
-        mco_g.append(planet.f_comp[comp][0])
-        mco_d.append(planet.f_comp[comp][1])
-        rr.append(planet.dist)
-    return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
-
-def std_mig_comp(planet, DM, p_env, T, f_plansi, dt, nt):
-    planet_evo = np.array([planet])
-    
-    masses = [planet.mass]
-    mcs = [planet.mc]
-    mgs = [planet.mg]
-    ms_comp = [planet.f_comp]
-    mco_g = {}
-    mco_d = {}
-    species, abundances = get_molecular_properties()
-    specs = [spec.name for spec in species]
-    planet.f_comp = dict(zip(specs,np.zeros((len(specs),2))))
-    for comp in specs:
-        print(comp, planet.f_comp[comp][0])
-        mco_g[comp] = [planet.f_comp[comp][0]]
-        mco_d[comp] = [planet.f_comp[comp][1]]
-
-    rr = [planet.dist]
-    for nn in range(nt-1):
-        #if nn > nt-100:
-        #    TT = lambda R: 150*(R/Rau)**-0.5
-        #    alp = lambda R: p_env.alpha
-        #    DM = DiscModel(grid, Mdot_gas*(1-(nn-nt+100)/100), alp, TT)
-        #    DM.compute_dust_surface_density(Mdot_dust, Stokes)
-        #    print( Mdot_gas*(1-(nn-nt+100)/100))
-        planet = dumb.mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
-        planet.dist = np.max((dumb.mig_planet(planet, p_env, DM, T, dt) ,1e-6*Rau))
-        planet_evo = np.append(planet_evo, planet)
-        if planet.dist < 1e-3*Rau:
-            print('accreted')
-        masses.append(planet.mass)
-        mcs.append(planet.mc)
-        mgs.append(planet.mg)
-        for comp in specs:
-            mco_g[comp].append(planet.f_comp[comp][0])
-            mco_d[comp].append(planet.f_comp[comp][1])
-        rr.append(planet.dist)
-    #print(np.array(mco_d['CO2'])*Msun/Mearth)
-    #return np.array(masses),np.array(mcs),np.array(mgs),np.array(rr),mco_g, mco_d ,specs
-    return planet_evo
 
 def multi_plot(ms,mcs,mgs,mco_g,mco_d,rrs,Nt,dt,titles):
     fig, (ax,ax2) = plt.subplots(2,1,sharex=True)
@@ -143,7 +77,14 @@ def multi_plan(ms,mcs,mgs,rrs,Nt,dt,titles):
     plt.show()
     pass
 
-def plot_planet_comp(masses,mcs,mgs,mco_g,mco_d,rr,Nt,dt,title=''): 
+def plot_planet_comp(planet_evo, Nt, dt, comp='CO', title=''):
+
+    masses = [p.mass for p in planet_evo]
+    mcs = [p.mg for p in planet_evo]
+    mgs = [p.mc for p in planet_evo]
+    mco_g = [p.f_comp[comp][0] for p in planet_evo]
+    mco_d = [p.f_comp[comp][1] for p in planet_evo]
+
     fig, ax = plt.subplots()
     ax.plot(np.arange(Nt)*dt, np.array(masses)*Msun/Mearth, 'k-', label='total')
     ax.plot(np.arange(Nt)*dt, np.array(mcs)*Msun/Mearth, 'g:', label='core')
@@ -160,16 +101,60 @@ def plot_planet_comp(masses,mcs,mgs,mco_g,mco_d,rr,Nt,dt,title=''):
     plt.show()
     pass
 
+def plot_planet(planet_evo,Nt,dt):
+    
+    ms3 = [p.mass for p in planet_evo]
+    mgf = [p.mg for p in planet_evo]
+    mdf = [p.mc for p in planet_evo]
+
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
+    plt.plot(np.arange(Nt)*dt, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(np.arange(Nt)*dt, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(np.arange(Nt)*dt, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
+    for name, c in zip(list(planet_evo[0].f_comp.keys()),colors):
+        mg_cof = [p.f_comp[name][0] for p in planet_evo]
+        md_cof = [p.f_comp[name][1] for p in planet_evo]
+        plt.plot(np.arange(Nt)*dt, np.array(mg_cof)*Msun/Mearth, '--', c=c, label=name)
+        plt.plot(np.arange(Nt)*dt, np.array(md_cof)*Msun/Mearth, ':', c=c)
+    plt.ylim(1e-5,1e3)
+    plt.ylabel(r'mass [$M_{\oplus}$]')
+    plt.xlabel('time [yr]')
+
+    plt.legend()
+    plt.yscale('log')
+    plt.show()
+
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
+    for name, c in zip(list(planet_evo[0].f_comp.keys()),colors):
+        #name = spec.name
+        mg_cof = [p.f_comp[name][0] for p in planet_evo]
+        md_cof = [p.f_comp[name][1] for p in planet_evo]
+        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mg_cof)*Msun/Mearth, '--', c=c, label=name)
+        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(md_cof)*Msun/Mearth, ':', c=c)
+    plt.ylim(1e-5,1e3)
+    plt.xlabel('radius [au]')
+    plt.ylabel(r'mass [$M_{\oplus}$]')
+    plt.legend()
+    plt.yscale('log')
+    plt.show()
+    pass
+
 def lecture_plot():
     Mdot_gas = 1e-8
     Mdot_dust = 1e-9
-    Stokes = 0.01
+    Stokes = lambda R: 0.01
 
     T = lambda R: 150*(R/Rau)**-0.5
     alpha = lambda R: 1e-3
 
     species, abundances = get_molecular_properties()
     f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
+    f_comp['H2'] = np.zeros(2)
+    f_comp['Si'] = np.zeros(2)
     grid = Grid(0.1*Rau, 300*Rau, 512)
 
     p_env = PlanetEnv(grid, alpha(grid.Rc), 2.35, 1.0)
@@ -199,11 +184,60 @@ def lecture_plot():
         multi_plan(ms2[1:],mcs2[1:],mgs2[1:],rrs2[1:],Nt,dt,(15,30,40))
     pass
 
+def atom_mass(f_comp):
+    f_atom = dict(zip(list(ELEMENT_MASS.keys()),np.zeros((len(list(ELEMENT_MASS.keys())),2))))
+    mol_names = list(f_comp.keys())
+    for mol_n in mol_names:
+        n_atoms = atoms_in_molecule(mol_n)
+        mass_mol = np.sum([n_atoms[na]*ELEMENT_MASS[na] for na in list(n_atoms.keys())])
+        for na in list(n_atoms.keys()):
+            f_atom[na][0] += f_comp[mol_n][0]/mass_mol*ELEMENT_MASS[na] * n_atoms[na]
+            f_atom[na][1] += f_comp[mol_n][1]/mass_mol*ELEMENT_MASS[na] * n_atoms[na]
+    return f_atom
+
+def plot_atoms(planet_evo,Nt,dt):
+
+    ms3 = [p.mass for p in planet_evo]
+    mgf = [p.mg for p in planet_evo]
+    mdf = [p.mc for p in planet_evo]
+
+    print(atom_mass(planet_evo[0].f_comp))
+    #for p in planet_evo:
+    #    at_mass = atom_mass(p.f_comp)
+        #print(at_mass)
+    at_mass = [atom_mass(p.f_comp) for p in planet_evo]
+
+    atoms = list(ELEMENT_MASS.keys())
+
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array([am['Si'][0] for am in at_mass])*Msun/Mearth, '--', c='b', label='Si')
+    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array([am['Si'][1] for am in at_mass])*Msun/Mearth, ':', c='b')
+    for atom,c in zip(atoms,colors):
+        mg_at = [am[atom][0] for am in at_mass]
+        md_at = [am[atom][1] for am in at_mass]
+        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mg_at)*Msun/Mearth, '--', c=c, label=atom)
+        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(md_at)*Msun/Mearth, ':', c=c)
+
+
+    plt.xlabel('Radius [au]')
+    plt.ylabel(r'mass [$M_{\oplus}$]')
+
+    plt.ylim(1e-3,1e3)
+    plt.yscale('log')
+    plt.legend()
+    plt.show()
+    pass
 
 def main():
+    '''
     Mdot_gas = 1e-8
     Mdot_dust = 1e-9
-    Stokes = 0.01
+    Stokes = lambda R: 0.01
 
     T = lambda R: 150*(R/Rau)**-0.5
     alpha = lambda R: 1e-3
@@ -216,7 +250,7 @@ def main():
 
     dt = 5000
     Nt = 100
-    f_plansi = 5e-1
+    f_plansi = 1e-1
 
     ms2=np.zeros(Nt)
     mcs2=np.zeros(Nt)
@@ -230,6 +264,8 @@ def main():
 
     for r,mm in zip((8,16,32,8),(1,1,1,1,1,1)):
         f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
+        f_comp['H2'] = np.zeros(2)
+        f_comp['Si'] = np.zeros(2)
         alpha = lambda R: 1e-3
         DM = DiscModel(grid, Mdot_gas, alpha, T)
         DM.compute_dust_surface_density(Mdot_dust, Stokes)
@@ -237,47 +273,53 @@ def main():
         DM.compute_chemistry(species, abundances )
         p_env = PlanetEnv(grid, 1e-3, 2.35, 1.0)
         planet = Planet(mm*init_m*Mearth/Msun, mm*init_m*(1-frac_gc)*Mearth/Msun, mm*init_m*(frac_gc)*Mearth/Msun, f_comp,r*Rau)
-        m,mc,mg,mco_g,mco_d,rr = std_mig(planet, DM, p_env, T(grid.Rc),f_plansi, dt, Nt, comp='H2O')
+        m,mc,mg,mco_g,mco_d,rr = dumb.std_evo(planet, DM, p_env, T(grid.Rc),f_plansi, dt, Nt, comp='CO')
         ms2=np.vstack((ms2,m))
         mcs2=np.vstack((mcs2,mc))
         mgs2=np.vstack((mgs2,mg))
         mco2_gs=np.vstack((mco2_gs,mco_g))
         mco2_ds=np.vstack((mco2_ds,mco_d))
         rrs2=np.vstack((rrs2,rr))
+    '''
 
     #print(mco2_gs[4])
     #multi_plot(ms2[1:],mcs2[1:],mgs2[1:],mco2_gs[1:],mco2_ds[1:],rrs2[1:],Nt,dt,(8,16,32,64))
-    plot_planet_comp(ms2[4],mcs2[4],mgs2[4],mco2_gs[4],mco2_ds[4],rrs2[4],Nt,dt,'')
+    #plot_planet_comp(ms2[4],mcs2[4],mgs2[4],mco2_gs[4],mco2_ds[4],rrs2[4],Nt,dt,'')
 
-    ms2=np.zeros(Nt)
-    mcs2=np.zeros(Nt)
-    mgs2=np.zeros(Nt)
-    mco2_gs=np.zeros(Nt)
-    mco2_ds=np.zeros(Nt)
-    rrs2=np.zeros(Nt)
+    Mdot_gas = 1e-8
+    Mdot_dust = 1e-9
+    Stokes = lambda R: 0.01
 
+    T = lambda R: 150*(R/Rau)**-0.5
+    alpha = lambda R: 1e-3
+    grid = Grid(0.1*Rau, 300*Rau, 512)
+
+    DM = DiscModel(grid, Mdot_gas, alpha, T)
+    DM.compute_dust_surface_density(Mdot_dust, Stokes)
+    species, abundances = get_molecular_properties()
+    DM.compute_chemistry(species, abundances )
+
+    species, abundances = get_molecular_properties()
+
+    p_env = PlanetEnv(grid, alpha(grid.Rc), 2.35, 1.0)
+
+    dt = 5000
+    Nt = 100
+    f_plansi = 1e-1
+
+    frac_gc = 0.1
+    init_m  = 5.0
     f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
-    planet = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 8*Rau)
-    planet_evo = std_mig_comp(planet, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
-    
-    ms3 = [p.mass for p in planet_evo]
-    mgf = [p.mg for p in planet_evo]
-    mdf = [p.mc for p in planet_evo]
-    mg_cof = [p.f_comp['CO'][0] for p in planet_evo]
-    md_cof = [p.f_comp['CO'][1] for p in planet_evo]
-    mg_hof = [p.f_comp['H2O'][0] for p in planet_evo]
-    md_hof = [p.f_comp['H2O'][1] for p in planet_evo]
+    f_comp['H2'] = np.zeros(2)
+    f_comp['Si'] = np.zeros(2)
 
-    print(ms3)
+    planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 7*Rau)
 
-    plt.plot(np.arange(Nt)*dt, np.array(ms3)*Msun/Mearth, 'k--', label='total')
-    plt.plot(np.arange(Nt)*dt, np.array(mgf)*Msun/Mearth, 'k-', label='total')
-    plt.plot(np.arange(Nt)*dt, np.array(mg_cof)*Msun/Mearth, 'c:', label='CO gas')
-    plt.plot(np.arange(Nt)*dt, np.array(md_cof)*Msun/Mearth, 'c--', label='CO dust')
-    plt.plot(np.arange(Nt)*dt, np.array(mg_hof)*Msun/Mearth, 'b:', label='H2O gas')
-    plt.plot(np.arange(Nt)*dt, np.array(md_hof)*Msun/Mearth, 'b--', label='H2O dust')
-    plt.yscale('log')
-    plt.show()
+    planet_evo = dumb.std_evo_comp(planet_ini, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
+    #plot_planet(planet_evo,Nt,dt)
+    print(atom_mass(planet_evo[0].f_comp), '\n', atom_mass(planet_evo[-1].f_comp),'\n', planet_evo[-1].f_comp)
+    plot_atoms(planet_evo,Nt,dt)
+    pass
 
 if '__main__'==__name__:
     main()

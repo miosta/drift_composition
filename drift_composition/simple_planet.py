@@ -71,15 +71,20 @@ class PlanetEnv:
 
             s_mol_g = loc_disc(sigma_mol[mol.name][:,0], self.grid.Rc, dist)
             sig_mol_g[mol.name] = s_mol_g
+                
+        sig_mol_g['H2']= loc_disc(disc.Sigma_gas, self.grid.Rc, dist)
+        sig_mol_d['H2']= 0.
+        sig_mol_g['Si']= 0.
+        sig_mol_d['Si']= loc_disc(disc.Sigma_dust, self.grid.Rc, dist)
         return sig_mol_g, sig_mol_d
 
     def sigs_tot(self, disc, dist):
         sig_H2 = loc_disc(disc.Sigma_gas, self.grid.Rc, dist) 
         sig_Si = loc_disc(disc.Sigma_dust, self.grid.Rc, dist) 
         sg_spec, sd_spec = self.sig_mol(disc, dist)
-        sg_tot = np.sum([sg_spec[mol.name] for mol in disc.Molecules])
-        sd_tot = np.sum([sd_spec[mol.name] for mol in disc.Molecules])
-        return sig_H2 + sg_tot , sig_Si + sd_tot
+        sg_tot = np.sum([sg_spec[mol] for mol in list(sg_spec.keys())])
+        sd_tot = np.sum([sd_spec[mol] for mol in list(sd_spec.keys())])
+        return sg_tot, sd_tot
 
     def Stokes(self, disc, dist):
         st = disc.Stokes(self.grid.Re)
@@ -244,3 +249,66 @@ def mig_planet(planet, p_env, disc, T, dt):
     a_dot = dk_mig(planet,p_env, disc,T)
     #a_dot = visc_mig(planet, p_env, disc, T)
     return planet.dist + a_dot*dt
+
+def std_evo(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
+    masses = [planet.mass]
+    mcs = [planet.mc]
+    mgs = [planet.mg]
+    mco_g = [planet.f_comp[comp][0]]
+    mco_d = [planet.f_comp[comp][1]]
+    rr = [planet.dist]
+    for nn in range(nt-1):
+        #if nn > nt-100:
+        #    TT = lambda R: 150*(R/Rau)**-0.5
+        #    alp = lambda R: p_env.alpha
+        #    DM = DiscModel(grid, Mdot_gas*(1-(nn-nt+100)/100), alp, TT)
+        #    DM.compute_dust_surface_density(Mdot_dust, Stokes)
+        #    print( Mdot_gas*(1-(nn-nt+100)/100))
+        planet = mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
+        planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt) ,1e-6*Rau))
+        if planet.dist < 1e-3*Rau:
+            print('accreted')
+        masses.append(planet.mass)
+        mcs.append(planet.mc)
+        mgs.append(planet.mg)
+        mco_g.append(planet.f_comp[comp][0])
+        mco_d.append(planet.f_comp[comp][1])
+        rr.append(planet.dist)
+    return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
+
+def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt):
+    planet_evo = np.array([planet])
+    
+    masses = [planet.mass]
+    mcs = [planet.mc]
+    mgs = [planet.mg]
+    ms_comp = [planet.f_comp]
+    mco_g = {}
+    mco_d = {}
+    for comp in np.array(list(planet.f_comp.keys())):
+        mco_g[comp] = [planet.f_comp[comp][0]]
+        mco_d[comp] = [planet.f_comp[comp][1]]
+
+    rr = [planet.dist]
+    for nn in range(nt-1):
+        #if nn > nt-100:
+        #    TT = lambda R: 150*(R/Rau)**-0.5
+        #    alp = lambda R: p_env.alpha
+        #    DM = DiscModel(grid, Mdot_gas*(1-(nn-nt+100)/100), alp, TT)
+        #    DM.compute_dust_surface_density(Mdot_dust, Stokes)
+        #    print( Mdot_gas*(1-(nn-nt+100)/100))
+        planet = mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
+        planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt) ,1e-6*Rau))
+        planet_evo = np.append(planet_evo, planet)
+        if planet.dist < 1e-3*Rau:
+            print('accreted at t = {}; n= {}'.format(nn*dt,nn))
+        masses.append(planet.mass)
+        mcs.append(planet.mc)
+        mgs.append(planet.mg)
+        for comp in np.array(list(planet.f_comp.keys())):
+            mco_g[comp].append(planet.f_comp[comp][0])
+            mco_d[comp].append(planet.f_comp[comp][1])
+        rr.append(planet.dist)
+    #print(np.array(mco_d['CO2'])*Msun/Mearth)
+    #return np.array(masses),np.array(mcs),np.array(mgs),np.array(rr),mco_g, mco_d ,specs
+    return planet_evo
