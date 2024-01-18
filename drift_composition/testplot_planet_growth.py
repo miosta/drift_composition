@@ -4,6 +4,7 @@ from drift_composition.disc import DiscModel
 from drift_composition.molecule import get_molecular_properties
 from drift_composition.simple_planet import Planet, PlanetEnv
 from drift_composition.atoms import atoms_in_molecule, ELEMENT_MASS
+from drift_composition.simple_reduction import Evolution, atom_mass
 import drift_composition.simple_planet as dumb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,19 +79,14 @@ def multi_plan(ms,mcs,mgs,rrs,Nt,dt,titles):
     pass
 
 def plot_planet_comp(planet_evo, Nt, dt, comp='CO', title=''):
-
-    masses = [p.mass for p in planet_evo]
-    mcs = [p.mg for p in planet_evo]
-    mgs = [p.mc for p in planet_evo]
-    mco_g = [p.f_comp[comp][0] for p in planet_evo]
-    mco_d = [p.f_comp[comp][1] for p in planet_evo]
+    e = Evolution(planet_evo, Nt, dt)
 
     fig, ax = plt.subplots()
-    ax.plot(np.arange(Nt)*dt, np.array(masses)*Msun/Mearth, 'k-', label='total')
-    ax.plot(np.arange(Nt)*dt, np.array(mcs)*Msun/Mearth, 'g:', label='core')
-    ax.plot(np.arange(Nt)*dt, np.array(mgs)*Msun/Mearth, 'b-.', label='gas')
-    ax.plot(np.arange(Nt)*dt, np.array(mco_g)*Msun/Mearth, 'c:', label='CO gas')
-    ax.plot(np.arange(Nt)*dt, np.array(mco_d)*Msun/Mearth, 'c--', label='CO dust')
+    ax.plot(e.time, e.masses*Msun/Mearth, 'k-', label='total')
+    ax.plot(e.time, e.mcs*Msun/Mearth, 'g:', label='core')
+    ax.plot(e.time, e.mgs*Msun/Mearth, 'b-.', label='gas')
+    ax.plot(e.time, e.f_comps[comp][0]*Msun/Mearth, 'c:', label='CO gas')
+    ax.plot(e.time, e.f_comps[comp][1]*Msun/Mearth, 'c--', label='CO dust')
     #ax.set_yscale('log')
     #ax.set_xscale('log')
     ax.set_xlabel("time [yr]")
@@ -102,22 +98,17 @@ def plot_planet_comp(planet_evo, Nt, dt, comp='CO', title=''):
     pass
 
 def plot_planet(planet_evo,Nt,dt):
-    
-    ms3 = [p.mass for p in planet_evo]
-    mgf = [p.mg for p in planet_evo]
-    mdf = [p.mc for p in planet_evo]
+    e = Evolution(planet_evo, Nt, dt)
 
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
 
-    plt.plot(np.arange(Nt)*dt, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
-    plt.plot(np.arange(Nt)*dt, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
-    plt.plot(np.arange(Nt)*dt, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
+    plt.plot(e.time, e.masses*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(e.time, e.mgs*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(e.time, e.mcs*Msun/Mearth, 'k:', label='dust total')
     for name, c in zip(list(planet_evo[0].f_comp.keys()),colors):
-        mg_cof = [p.f_comp[name][0] for p in planet_evo]
-        md_cof = [p.f_comp[name][1] for p in planet_evo]
-        plt.plot(np.arange(Nt)*dt, np.array(mg_cof)*Msun/Mearth, '--', c=c, label=name)
-        plt.plot(np.arange(Nt)*dt, np.array(md_cof)*Msun/Mearth, ':', c=c)
+        plt.plot(e.time, e.f_comps[name][0]*Msun/Mearth, '--', c=c, label=name)
+        plt.plot(e.time, e.f_comps[name][1]*Msun/Mearth, ':', c=c)
     plt.ylim(1e-5,1e3)
     plt.ylabel(r'mass [$M_{\oplus}$]')
     plt.xlabel('time [yr]')
@@ -126,15 +117,12 @@ def plot_planet(planet_evo,Nt,dt):
     plt.yscale('log')
     plt.show()
 
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
+    plt.plot(e.rs, e.masses*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(e.rs, e.mgs*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(e.rs, e.mcs*Msun/Mearth, 'k:', label='dust total')
     for name, c in zip(list(planet_evo[0].f_comp.keys()),colors):
-        #name = spec.name
-        mg_cof = [p.f_comp[name][0] for p in planet_evo]
-        md_cof = [p.f_comp[name][1] for p in planet_evo]
-        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mg_cof)*Msun/Mearth, '--', c=c, label=name)
-        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(md_cof)*Msun/Mearth, ':', c=c)
+        plt.plot(e.rs, e.f_comps[name][0]*Msun/Mearth, '--', c=c, label=name)
+        plt.plot(e.rs, e.f_comps[name][1]*Msun/Mearth, ':', c=c)
     plt.ylim(1e-5,1e3)
     plt.xlabel('radius [au]')
     plt.ylabel(r'mass [$M_{\oplus}$]')
@@ -184,27 +172,47 @@ def lecture_plot():
         multi_plan(ms2[1:],mcs2[1:],mgs2[1:],rrs2[1:],Nt,dt,(15,30,40))
     pass
 
-def atom_mass(f_comp):
-    f_atom = dict(zip(list(ELEMENT_MASS.keys()),np.zeros((len(list(ELEMENT_MASS.keys())),2))))
-    mol_names = list(f_comp.keys())
-    for mol_n in mol_names:
-        n_atoms = atoms_in_molecule(mol_n)
-        mass_mol = np.sum([n_atoms[na]*ELEMENT_MASS[na] for na in list(n_atoms.keys())])
-        for na in list(n_atoms.keys()):
-            f_atom[na][0] += f_comp[mol_n][0]/mass_mol*ELEMENT_MASS[na] * n_atoms[na]
-            f_atom[na][1] += f_comp[mol_n][1]/mass_mol*ELEMENT_MASS[na] * n_atoms[na]
-    return f_atom
+def plot_CtoO(planet_evo,Nt,dt,atm1,atm2,solar = 1.):
+    e = Evolution(planet_evo, Nt, dt)
+    fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2, sharex='col', sharey='row')
+
+    atoms = (atm1, atm2)
+
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+
+    for (x,a1,a2) in zip((e.time,e.rs),(ax1,ax2),(ax3,ax4)):
+        a1.plot(x, e.masses*Msun/Mearth, 'k-', label='mass total')
+        a1.plot(x, e.mgs*Msun/Mearth, 'k--', label='gas total')
+        a1.plot(x, e.mcs*Msun/Mearth, 'k:', label='dust total')
+        for atom,c in zip(atoms,colors):
+            a1.plot(x, e.f_atms[atom][0]*Msun/Mearth, '--', c=c, label=atom)
+            a1.plot(x, e.f_atms[atom][1]*Msun/Mearth, ':', c=c)
+
+        a2.plot(x, (e.f_atms[atm1][0]/e.f_atms[atm2][0])*(ELEMENT_MASS[atm2]/ELEMENT_MASS[atm1])/solar, label='gas only')
+        a2.plot(x, ((e.f_atms[atm1][0]+e.f_atms[atm1][1])/(e.f_atms[atm2][0]+e.f_atms[atm2][1])*(ELEMENT_MASS[atm2]/ELEMENT_MASS[atm1]))/solar, label='gas+dust')
+
+    ax3.set_xlabel('time [yr]')
+    ax4.set_xlabel('distance [au]')
+    ax1.set_ylabel(r'mass [$M_{\oplus}$]')
+    ax3.set_ylabel(r'{}/{}'.format(atm1,atm2))
+
+    ax1.set_ylim(1e-3,1e3)
+    ax2.set_ylim(1e-3,1e3)
+    ax1.set_yscale('log')
+    ax2.set_yscale('log')
+
+    ax1.legend()
+    ax3.legend()
+    plt.show()
+    pass
 
 def plot_atoms(planet_evo,Nt,dt):
 
-    ms3 = [p.mass for p in planet_evo]
-    mgf = [p.mg for p in planet_evo]
-    mdf = [p.mc for p in planet_evo]
+    e = Evolution(planet_evo, Nt, dt)
+    ms3 = e.masses
 
-    print(atom_mass(planet_evo[0].f_comp))
-    #for p in planet_evo:
-    #    at_mass = atom_mass(p.f_comp)
-        #print(at_mass)
+    #print(atom_mass(planet_evo[0].f_comp))
     at_mass = [atom_mass(p.f_comp) for p in planet_evo]
 
     atoms = list(ELEMENT_MASS.keys())
@@ -212,16 +220,14 @@ def plot_atoms(planet_evo,Nt,dt):
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
 
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(ms3)*Msun/Mearth, 'k-', label='mass total')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mgf)*Msun/Mearth, 'k--', label='gas total')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mdf)*Msun/Mearth, 'k:', label='dust total')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array([am['Si'][0] for am in at_mass])*Msun/Mearth, '--', c='b', label='Si')
-    plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array([am['Si'][1] for am in at_mass])*Msun/Mearth, ':', c='b')
+    plt.plot(e.rs, ms3*Msun/Mearth, 'k-', label='mass total')
+    plt.plot(e.rs, e.mgs*Msun/Mearth, 'k--', label='gas total')
+    plt.plot(e.rs, e.mcs*Msun/Mearth, 'k:', label='dust total')
+    plt.plot(e.rs, e.f_atms['Si'][0]*Msun/Mearth, '--', c='b', label='Si')
+    plt.plot(e.rs, e.f_atms['Si'][1]*Msun/Mearth, ':', c='b')
     for atom,c in zip(atoms,colors):
-        mg_at = [am[atom][0] for am in at_mass]
-        md_at = [am[atom][1] for am in at_mass]
-        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(mg_at)*Msun/Mearth, '--', c=c, label=atom)
-        plt.plot(np.array([p.dist for p in planet_evo])/Rau, np.array(md_at)*Msun/Mearth, ':', c=c)
+        plt.plot(e.rs, e.f_atms[atom][0]*Msun/Mearth, '--', c=c, label=atom)
+        plt.plot(e.rs, e.f_atms[atom][1]*Msun/Mearth, ':', c=c)
 
 
     plt.xlabel('Radius [au]')
@@ -307,18 +313,22 @@ def main():
     Nt = 100
     f_plansi = 1e-1
 
-    frac_gc = 0.1
+    frac_gc = 0.01
     init_m  = 5.0
     f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
     f_comp['H2'] = np.zeros(2)
     f_comp['Si'] = np.zeros(2)
 
-    planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 7*Rau)
+    planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 15*Rau)
 
     planet_evo = dumb.std_evo_comp(planet_ini, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
     #plot_planet(planet_evo,Nt,dt)
     print(atom_mass(planet_evo[0].f_comp), '\n', atom_mass(planet_evo[-1].f_comp),'\n', planet_evo[-1].f_comp)
+    plot_planet(planet_evo,Nt,dt)
     plot_atoms(planet_evo,Nt,dt)
+    plot_CtoO(planet_evo,Nt,dt,'C','O')
+    plot_CtoO(planet_evo,Nt,dt,'O','H', solar = 0.0005242)
+
     pass
 
 if '__main__'==__name__:
