@@ -147,7 +147,7 @@ def visc_mig(planet, p_env, disc, T):
     sig_gas_p, _ = p_env.sigs_tot(disc, dist+dr)
     X0          = (dist-dr)**(3./2.)*p_env.hr(T,dist-dr)**2*p_env.vk(dist-dr)*sig_gas_m
     X1          = (dist+dr)**(3./2.)*p_env.hr(T,dist+dr)**2*p_env.vk(dist+dr)*sig_gas_p
-    dr_X        = alpha * (X1-X0)/(2*dr)   
+    dr_X        = alpha  * (X1-X0)/(2*dr)   
     vr = - 3/np.sqrt(dist)/sig_gas *dr_X*yr
     return vr
 
@@ -230,10 +230,6 @@ def mass_growth_pl(planet, p_env, disc, T, dt, plansi_frac):
     molg, mold = p_env.sig_mol(disc,dist)
     mol_names = list(molg.keys())
 
-    for mol in mol_names:
-        if sd<mold[mol]: print('dust error: dust={}, sig_mol={}, mol={}'.format(sd, mold[mol], mol))
-        if sg<molg[mol]: print('gas error')
-
     mol_comp = {
         k: np.array([
             v[0] + dm_gas*(molg[k]/sg)*dt,
@@ -291,17 +287,10 @@ def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt):
 
     rr = [planet.dist]
     for nn in range(nt-1):
-        #if nn > nt-100:
-        #    TT = lambda R: 150*(R/Rau)**-0.5
-        #    alp = lambda R: p_env.alpha
-        #    DM = DiscModel(grid, Mdot_gas*(1-(nn-nt+100)/100), alp, TT)
-        #    DM.compute_dust_surface_density(Mdot_dust, Stokes)
-        #    print( Mdot_gas*(1-(nn-nt+100)/100))
-        planet = mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
-        planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt) ,1e-6*Rau))
+        if planet.dist > 1e-3:
+            planet = mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
+        planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt) ,1e-4*Rau))
         planet_evo = np.append(planet_evo, planet)
-        if planet.dist < 1e-3*Rau:
-            print('accreted at t = {}; n= {}'.format(nn*dt,nn))
         masses.append(planet.mass)
         mcs.append(planet.mc)
         mgs.append(planet.mg)
@@ -309,6 +298,8 @@ def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt):
             mco_g[comp].append(planet.f_comp[comp][0])
             mco_d[comp].append(planet.f_comp[comp][1])
         rr.append(planet.dist)
-    #print(np.array(mco_d['CO2'])*Msun/Mearth)
-    #return np.array(masses),np.array(mcs),np.array(mgs),np.array(rr),mco_g, mco_d ,specs
-    return planet_evo
+        if planet.dist < 1e-3*Rau:
+            print('accreted at t = {}; n= {}'.format(nn*dt,nn))
+            break
+    #print(nn,len(planet_evo))
+    return planet_evo[:nn], nn
