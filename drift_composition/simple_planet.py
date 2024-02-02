@@ -3,14 +3,6 @@ from drift_composition.constants import k_boltzmann, m_hydrogen, G_Msun, Rau, Ms
 from drift_composition.planetesimal_flux import Plansi, plansi_flux
 from drift_composition.atoms import molecule_mass
 
-def seed_mass(hr, flaring, gas_slope, dist):
-    dist = dist*Rau
-    vk = np.sqrt(mass_star*G_Msun/dist)
-    pres_grad = 2*(flaring-1)+gas_slope
-    eta = - 0.5* hr**2 * pres_grad
-    m_min = (eta*vk)**3/G_Msun/vk*dist/np.sqrt(3)
-    return m_min
-
 def loc_disc (g_val, Rg, dist):
     cid = np.argmin(np.abs(Rg-dist))
     #loc_val = g_val[cid]
@@ -40,11 +32,13 @@ class PlanetEnv:
 
     All densities sig_ expect and pass g/cm^2, vk = cm/s
     '''
-    def __init__(self, grid, alpha, mu, mass_star):
+    def __init__(self, grid, alpha, mu, mass_star, gas=('H2',), dust=('Si',)):
         self.alpha = alpha
         self.mu    = mu #TODO: Check this works the same in disc
         self.mass_star = mass_star
         self.grid  = grid
+        self.gas   = gas
+        self.dust  = dust
 
     def temp(self, T, dist):
         return loc_disc(T, self.grid.Rc, dist) 
@@ -72,15 +66,15 @@ class PlanetEnv:
             s_mol_g = loc_disc(sigma_mol[mol.name][:,0], self.grid.Rc, dist)
             sig_mol_g[mol.name] = s_mol_g
                 
-        sig_mol_g['H2']= loc_disc(disc.Sigma_gas, self.grid.Rc, dist)
-        sig_mol_d['H2']= 0.
-        sig_mol_g['Si']= 0.
-        sig_mol_d['Si']= loc_disc(disc.Sigma_dust, self.grid.Rc, dist)
+        for g in self.gas:
+            sig_mol_g[g]= loc_disc(disc.Sigma_gas, self.grid.Rc, dist)
+            sig_mol_d[g]= 0.
+        for d in self.dust:
+            sig_mol_g[d]= 0.
+            sig_mol_d[d]= loc_disc(disc.Sigma_dust, self.grid.Rc, dist)
         return sig_mol_g, sig_mol_d
 
     def sigs_tot(self, disc, dist):
-        sig_H2 = loc_disc(disc.Sigma_gas, self.grid.Rc, dist) 
-        sig_Si = loc_disc(disc.Sigma_dust, self.grid.Rc, dist) 
         sg_spec, sd_spec = self.sig_mol(disc, dist)
         sg_tot = np.sum([sg_spec[mol] for mol in list(sg_spec.keys())])
         sd_tot = np.sum([sd_spec[mol] for mol in list(sd_spec.keys())])
@@ -229,7 +223,7 @@ def mass_growth_pl(planet, p_env, disc, T, dt, plansi_frac):
     sg , sd = p_env.sigs_tot(disc, dist)
     molg, mold = p_env.sig_mol(disc,dist)
     mol_names = list(molg.keys())
-
+    
     mol_comp = {
         k: np.array([
             v[0] + dm_gas*(molg[k]/sg)*dt,
@@ -272,7 +266,7 @@ def std_evo(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
         rr.append(planet.dist)
     return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
 
-def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt):
+def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt, final_radius = 1e-3):
     planet_evo = np.array([planet])
     
     masses = [planet.mass]
@@ -298,8 +292,11 @@ def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt):
             mco_g[comp].append(planet.f_comp[comp][0])
             mco_d[comp].append(planet.f_comp[comp][1])
         rr.append(planet.dist)
-        if planet.dist < 1e-3*Rau:
+        if planet.dist < final_radius*Rau:
             print('accreted at t = {}; n= {}'.format(nn*dt,nn))
+            break
+        if planet.mass > 2e-3:
+            print('2Mjup at t = {}; n= {}'.format(nn*dt,nn))
             break
     #print(nn,len(planet_evo))
     return planet_evo[:nn], nn
