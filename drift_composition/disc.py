@@ -294,7 +294,7 @@ class DiscModel:
         H = np.zeros([self._grid.size, 2], dtype="f8")
 
         xHe = (0.5 * self._mu - 1) / (4 - self._mu)
-        H[:, 0] = self.Sigma_gas / (self._mu * m_hydrogen * (1 + xHe))
+        H[:, 0] = self.Sigma_gas / (self._mu * m_hydrogen * (0.5 + xHe))
 
         column["H"] = H
 
@@ -334,7 +334,7 @@ class DiscModel:
         H = np.zeros([self._grid.size, 2], dtype="f8")
 
         xHe = (0.5 * self._mu - 1) / (4 - self._mu)
-        H[:, 0] = self.Sigma_gas / (self._mu * m_hydrogen * (1 + xHe))
+        H[:, 0] = self.Sigma_gas / (self._mu * m_hydrogen * (0.5 + xHe))
 
         column["H2"] = H / 2
 
