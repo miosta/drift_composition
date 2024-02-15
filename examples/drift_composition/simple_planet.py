@@ -32,7 +32,7 @@ class PlanetEnv:
 
     All densities sig_ expect and pass g/cm^2, vk = cm/s
     '''
-    def __init__(self, grid, alpha, mu, mass_star, gas=('H2',), dust=('Si',)):
+    def __init__(self, grid, alpha, mu, mass_star, gas={'H2': 0.912}, dust={'Si': 3e-5}):
         self.alpha = alpha
         self.mu    = mu #TODO: Check this works the same in disc
         self.mass_star = mass_star
@@ -65,13 +65,26 @@ class PlanetEnv:
 
             s_mol_g = loc_disc(sigma_mol[mol.name][:,0], self.grid.Rc, dist)
             sig_mol_g[mol.name] = s_mol_g
-                
-        for g in self.gas:
-            sig_mol_g[g]= loc_disc(disc.Sigma_gas, self.grid.Rc, dist)
-            sig_mol_d[g]= 0.
-        for d in self.dust:
-            sig_mol_g[d]= 0.
-            sig_mol_d[d]= loc_disc(disc.Sigma_dust, self.grid.Rc, dist)
+
+        #mol_comp = {
+        #    k: np.array([
+        #        v[0] + dm_gas*(molg[k]/sg)*dt,
+        #        v[1] + (dm_pla+dm_peb)*(mold[k]/sd)*dt
+        #    ])
+        #    for k, v in planet.f_comp.items()
+        #}   
+
+        dust_mean = np.sum([d * molecule_mass(s_d) for s_d, d in self.dust.items()]) / np.sum(list(self.dust.values()))
+        gas_mean  = np.sum([g * molecule_mass(s_g) for s_g, g in self.gas.items()]) / np.sum(list(self.gas.values()))
+             
+        for s_g, a_g in self.gas.items():
+            sig_mol_g[s_g]= loc_disc(disc.Sigma_gas, self.grid.Rc, dist)*a_g*molecule_mass(s_g)*gas_mean
+            #print(molecule_mass(s_g),s_g, a_g*molecule_mass(s_g)/gas_mean, gas_mean)
+            sig_mol_d[s_g]= 0.
+        for s_d, a_d in self.dust.items():
+            sig_mol_g[s_d]= 0.
+            sig_mol_d[s_d]= loc_disc(disc.Sigma_dust, self.grid.Rc, dist)*a_d*molecule_mass(s_d)/dust_mean
+        #print(sig_mol_g['H2'], sig_mol_g['He'], gas_mean, loc_disc(disc.Sigma_gas, self.grid.Rc, dist))
         return sig_mol_g, sig_mol_d
 
     def sigs_tot(self, disc, dist):
@@ -135,14 +148,18 @@ def visc_mig(planet, p_env, disc, T):
     temperature = p_env.temp(T,dist)    
     hr          = p_env.hr(T,dist)
     alpha       = p_env.alpha
-    dr          = dist*1e-2
-    sig_gas, _ = p_env.sigs_tot(disc, dist)
-    sig_gas_m, _ = p_env.sigs_tot(disc, dist-dr)
-    sig_gas_p, _ = p_env.sigs_tot(disc, dist+dr)
-    X0          = (dist-dr)**(3./2.)*p_env.hr(T,dist-dr)**2*p_env.vk(dist-dr)*sig_gas_m
-    X1          = (dist+dr)**(3./2.)*p_env.hr(T,dist+dr)**2*p_env.vk(dist+dr)*sig_gas_p
-    dr_X        = alpha  * (X1-X0)/(2*dr)   
-    vr = - 3/np.sqrt(dist)/sig_gas *dr_X*yr
+    r_grid      = p_env.grid.Rc
+    ir          = np.argmin(abs(r_grid-dist))
+    dr          = abs(r_grid[ir+1] - r_grid[ir-1])
+    sig_gas, _ = p_env.sigs_tot(disc, r_grid[ir])
+    sig_gas_m, _ = p_env.sigs_tot(disc, r_grid[ir-1])
+    sig_gas_p, _ = p_env.sigs_tot(disc, r_grid[ir+1])
+    X0          = (dist-dr)**(3./2.)*p_env.hr(T,r_grid[ir-1])**2*p_env.vk(r_grid[ir-1])*sig_gas_m
+    X1          = (dist+dr)**(3./2.)*p_env.hr(T,r_grid[ir+1])**2*p_env.vk(r_grid[ir+1])*sig_gas_p
+    dr_X        = alpha  * (X1-X0)/(dr)
+    if dr_X < 0:
+        print(dr_X, dist/Rau, sig_gas, ir, planet.mass)
+    vr = - abs(3/np.sqrt(dist)/sig_gas *dr_X*yr)
     return vr
 
 def dk_mig(planet, p_env, disc, T):
@@ -159,12 +176,13 @@ def dk_mig(planet, p_env, disc, T):
     gas_density = sig_gas/Msun
     sig_std = (1e-7 / yr) /3./np.pi/nu
     #print(gas_density/sig_std)
-    f_still = np.min((0.1*(planet.mass*1e3)**(-1.5), 5.0)) 
-    f_mig   = np.min((3.5 * (gas_density/sig_std)**(0.55), 5.))
+    f_still = np.min((0.1*(planet.mass*1e3)**(-0.5), 5.0)) 
+    f_mig   = np.min((3.5 * (gas_density/sig_std)**(0.55), 10.))
     tau_0   = gas_density*vk**2*dist**2*(planet.mass/p_env.mass_star/hr)**2 / Msun
     ang_mom = planet.mass*dist*vk
     v_visc  = visc_mig(planet, p_env, disc, T)
-    a_dot   = np.min(((f_still*f_mig)*v_visc,0.1*v_visc))
+    factor  = np.max((f_still*f_mig,0.1))
+    a_dot   = factor*v_visc
     #print(a_dot/v_visc,  f_mig, f_still)
     #if a_dot > 3*v_visc:
         #print(a_dot, v_visc)
@@ -191,7 +209,7 @@ def pebble_accretion(planet, p_env, disc, T):
     mass_p = planet.mass
     dist   = planet.dist
     hr        = p_env.hr(T,dist)
-    stokes    = p_env.Stokes(disc,dist)
+    stokes    = np.max((p_env.Stokes(disc,dist),1e-10))
     mass_star = p_env.mass_star
     alpha     = p_env.alpha
     _ , sig_dust = p_env.sigs_tot(disc, dist)
@@ -266,37 +284,39 @@ def std_evo(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
         rr.append(planet.dist)
     return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
 
-def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt, final_radius = 1e-3):
-    planet_evo = np.array([planet])
+def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt, nt, final_radius = 1e-3):
+    planet_evo = np.array([planet_in])
     
-    masses = [planet.mass]
-    mcs = [planet.mc]
-    mgs = [planet.mg]
-    ms_comp = [planet.f_comp]
-    mco_g = {}
-    mco_d = {}
-    for comp in np.array(list(planet.f_comp.keys())):
-        mco_g[comp] = [planet.f_comp[comp][0]]
-        mco_d[comp] = [planet.f_comp[comp][1]]
+    nn = 0
+    #masses = [planet.mass]
+    #mcs = [planet.mc]
+    #mgs = [planet.mg]
+    #ms_comp = [planet.f_comp]
+    #mco_g = {}
+    #mco_d = {}
+    #for comp in np.array(list(planet.f_comp.keys())):
+    #    mco_g[comp] = [planet.f_comp[comp][0]]
+    #    mco_d[comp] = [planet.f_comp[comp][1]]
 
-    rr = [planet.dist]
+    #rr = [planet_in.dist]
     for nn in range(nt-1):
-        if planet.dist > 1e-3:
-            planet = mass_growth_pl(planet, p_env, DM, T, dt, f_plansi) 
+        planet = mass_growth_pl(planet_in, p_env, DM, T, dt, f_plansi) 
         planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt) ,1e-4*Rau))
         planet_evo = np.append(planet_evo, planet)
-        masses.append(planet.mass)
-        mcs.append(planet.mc)
-        mgs.append(planet.mg)
-        for comp in np.array(list(planet.f_comp.keys())):
-            mco_g[comp].append(planet.f_comp[comp][0])
-            mco_d[comp].append(planet.f_comp[comp][1])
-        rr.append(planet.dist)
+        planet_in = planet
+        #print(planet.dist/Rau, planet.mass)
+        #masses.append(planet.mass)
+        #mcs.append(planet.mc)
+        #mgs.append(planet.mg)
+        #for comp in np.array(list(planet.f_comp.keys())):
+        #    mco_g[comp].append(planet.f_comp[comp][0])
+        #    mco_d[comp].append(planet.f_comp[comp][1])
+        #rr.append(planet.dist)
         if planet.dist < final_radius*Rau:
             print('accreted at t = {}; n= {}'.format(nn*dt,nn))
             break
-        if planet.mass > 2e-3:
-            print('2Mjup at t = {}; n= {}'.format(nn*dt,nn))
+        if planet.mass > 5e-3:
+            print('1Mjup at t = {}; n= {}'.format(nn*dt,nn))
             break
     #print(nn,len(planet_evo))
     return planet_evo[:nn], nn

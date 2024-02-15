@@ -15,7 +15,7 @@ import numpy as np
 
 def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace(-6,-1,10), radii = np.linspace(6.,9.,10), final_radius = 1e-3):
 
-    dts = np.linspace(600/DM.Mdot_gas/1e8,9000/DM.Mdot_gas/1e8,len(radii))
+    dts = np.linspace(600/np.sqrt(DM.Mdot_gas)/1e4,9000/np.sqrt(DM.Mdot_gas)/1e4,len(radii))
     #dts = np.linspace(500,1000,10)
     Nt = 1000
     header = "#mini, mcini, mgini, rini, plans, rfin, mfin, mcfin, mgfin, mgH, mgO, mgC, mdH, mdO, mdC, m10, mg10, mc10, mgH10, mgO10, mgC10, mdH10, mdO10, mdC10, yr \n"
@@ -188,7 +188,7 @@ def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = n
     #Set up disc dynamics
     alp = 1e-3
     alpha = lambda R: alp
-    grid = Grid(0.01*Rau, 500*Rau, 712)
+    grid = Grid(0.001*Rau, 500*Rau, 712)
     T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
 
     DM = DiscModel(grid, Mdot_gas, alpha, T, mu)

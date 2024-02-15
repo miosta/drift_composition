@@ -3,7 +3,7 @@ from drift_composition.grid import Grid
 from drift_composition.disc import DiscModel
 from drift_composition.molecule import get_molecular_properties
 from drift_composition.simple_planet import Planet, PlanetEnv
-from drift_composition.atoms import atoms_in_molecule, ELEMENT_MASS
+from drift_composition.atoms import atoms_in_molecule, ELEMENT_MASS, load_protosolar_abundances
 from drift_composition.simple_reduction import Evolution, atom_mass, dust_to_gas
 import drift_composition.simple_reduction as red
 import drift_composition.simple_planet as dumb
@@ -209,9 +209,9 @@ def plot_atoms(e):
 def main():
     Mdot_gas = 1e-8
     Mdot_dust = 1e-9
-    Stokes = lambda R: 0.01
+    Stokes = lambda R: 0.001
 
-    T = lambda R: 150*(R/Rau)**-0.5
+    T = lambda R: 350*(R/Rau)**-0.5
     alpha = lambda R: 1e-3
     grid = Grid(0.1*Rau, 300*Rau, 512)
 
@@ -220,11 +220,15 @@ def main():
     species, abundances = get_molecular_properties()
     DM.compute_chemistry(species, abundances )
 
-    species, abundances = get_molecular_properties()
+    from drift_composition.simple_data import get_species_info, solar_org_comp
+    abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
+    species, abundances = get_species_info(abund, atom_ab)
+    #species, abundances = get_molecular_properties()
+    print([(spec.name) for spec in species], abundances)
 
-    gas = ('H2',)
-    dust = ('MgFeSiO4',)
-    p_env = PlanetEnv(grid, alpha(grid.Rc), 2.35, 1.0, gas, dust)
+    gas={'H2':0.912,'He':0.087} 
+    dust={'MgFeSiO4':3.235e-5}
+    p_env = PlanetEnv(grid, alpha(grid.Rc), 2.35, 1.4, gas, dust)
 
     SOLAR_OH = 0.0005242
     SOLAR_CO = 326./477.
@@ -242,7 +246,7 @@ def main():
     for d in dust:
         f_comp[d] = np.zeros(2)
 
-    planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 8.5*Rau)
+    planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 4.5*Rau)
 
     planet_evo, nn = dumb.std_evo_comp(planet_ini, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
     evolution = Evolution(planet_evo, nn, dt)

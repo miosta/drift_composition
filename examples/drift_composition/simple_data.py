@@ -15,21 +15,23 @@ import numpy as np
 
 def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace(-6,-1,10), radii = np.linspace(6.,9.,10), final_radius = 1e-3):
 
-    dts = np.linspace(600/DM.Mdot_gas/1e8,9000/DM.Mdot_gas/1e8,len(radii))
+    dts = np.linspace(2000,4000,len(radii))
     #dts = np.linspace(500,1000,10)
-    Nt = 1000
+    Nt = 5000
     header = "#mini, mcini, mgini, rini, plans, rfin, mfin, mcfin, mgfin, mgH, mgO, mgC, mdH, mdO, mdC, m10, mg10, mc10, mgH10, mgO10, mgC10, mdH10, mdO10, mdC10, yr \n"
     f = open('{}.txt'.format(inp), 'w')
     f.write(header)
+    p_ini = planet_ini
 
     for fp in f_plansis:
         for (rad, dt) in zip(radii,dts):
             fin_r =final_radius*(1+9*np.random.rand())
-            planet_ini.dist = rad*Rau
-            planet_evo, nn = simp.std_evo_comp(planet_ini, DM, p_env, T(p_env.grid.Rc),fp, dt, Nt, final_radius=fin_r)
+            p_ini.dist = rad*Rau
+            planet_evo, nn = simp.std_evo_comp(p_ini, DM, p_env, T(p_env.grid.Rc),fp, dt, Nt, final_radius=fin_r)
             planet_fin = planet_evo[-1]
-            evo = Evolution(planet_evo, nn, dt)
-            fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo))
+            #print(planet_fin.dist/Rau , fin_r)
+            #evo = Evolution(planet_evo, nn, dt)
+            #fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo))
             data = (str(planet_ini.mass), 
                     str(planet_ini.mc), 
                     str(planet_ini.mg), 
@@ -45,19 +47,21 @@ def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace
                     str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['H'][1]), 
                     str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['O'][1]), 
                     str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['C'][1]),
-                    str(fin_mass), 
-                    str(fin_mc), 
-                    str(fin_mg),
-                    str(fin_atom['H'][0]),
-                    str(fin_atom['O'][0]),
-                    str(fin_atom['C'][0]),
-                    str(fin_atom['H'][1]),
-                    str(fin_atom['O'][1]),
-                    str(fin_atom['C'][1]),
+                    #str(fin_mass), 
+                    #str(fin_mc), 
+                    #str(fin_mg),
+                    #str(fin_atom['H'][0]),
+                    #str(fin_atom['O'][0]),
+                    #str(fin_atom['C'][0]),
+                    #str(fin_atom['H'][1]),
+                    #str(fin_atom['O'][1]),
+                    #str(fin_atom['C'][1]),
                     str(nn*dt)
                     )
+            #print(data)
             f.write('  '.join(data))
             f.write('\n')
+            #print(planet_ini.dist/Rau ,planet_fin.dist/Rau)
     f.close()
     pass
 
@@ -137,7 +141,7 @@ def solar_org_comp(atom_abund=load_protosolar_abundances()):
         'N2'  : atom_abund['N'] * 0.45,
         'NH3' : atom_abund['N'] * 0.1,
 
-        'He' : atom_abund['He'], 
+        #'He' : atom_abund['He'], 
         'Ar' : atom_abund['Ar'], 
         'Kr' : 1.8e-9,
         'Xe' : 1.7e-10,
@@ -149,7 +153,12 @@ def solar_org_comp(atom_abund=load_protosolar_abundances()):
         'Na' : atom_abund['Na'],
         'K'  : atom_abund['K'],
     }
-    dust = list(grain_abund.keys())
+    gas_abund = {
+        'H2' : atom_abund['H'] / 2,
+        'He'  : atom_abund['He'],
+    }
+    dust = grain_abund
+    gas  = gas_abund
 
 # Count up the total carbon/oxygen abundance
     Ctot = 0
@@ -168,7 +177,7 @@ def solar_org_comp(atom_abund=load_protosolar_abundances()):
     mol_abund['C2H6'] = C_org * 0.25 / 2 
     mol_abund['C4H10'] = C_org * 0.75 / 4
 
-    return mol_abund, atom_abund, dust
+    return mol_abund, atom_abund, dust, gas
 
 def get_species_info(abund, atom_abund):
     """Load the molecular properties for the given abundances"""
@@ -183,13 +192,13 @@ def get_species_info(abund, atom_abund):
 
     return s_inc, np.array(abund_arr)
 
-def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = np.linspace(7.,9.,10), f_plansis= np.logspace(-6,-1,10), gas=('H2','He'), dust=('MgFeSiO4',), init_m=5.0, mu=2.35, L_star=2., m_star=1.4):
+def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = np.linspace(7.,9.,10), f_plansis= np.logspace(-6,-1,10), gas={'H2':0.912,'He':0.087}, dust={'MgFeSiO4':3.235e-5}, init_m=5.0, mu=2.35, L_star=2., m_star=1.4):
 
     #Set up disc dynamics
     alp = 1e-3
     alpha = lambda R: alp
-    grid = Grid(0.01*Rau, 500*Rau, 712)
-    T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
+    grid = Grid(0.0005*Rau, 500*Rau, 712)
+    T = lambda R: 50*(R/Rau)**(-0.5)#create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
 
     DM = DiscModel(grid, Mdot_gas, alpha, T, mu)
 
@@ -201,7 +210,9 @@ def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = n
     #Set up chemistry
 
     species, abundances = get_species_info(mol_abund, atom_abund)
+    #species, abundances = get_molecular_properties()
     DM.compute_chemistry(species, abundances )
+    print([(spec.name) for spec in species], abundances)
 
 
     f_comp = dict(zip([spec.name for spec in species],np.zeros((len(species),2))))
@@ -221,51 +232,52 @@ def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = n
 
 def default_data():
     inp = 'default'
-    abund, atom_ab, dust = solar_org_comp(atom_abund=load_protosolar_abundances())
+    abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
+    print(gas)
     planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
                                                          atom_ab, 
                                                          St_alp=1.,
                                                          Mdot_gas=1e-8,
-                                                         Md_Mg=0.1, 
-                                                         radii = np.linspace(7.,9.,10), 
-                                                         f_plansis= np.logspace(-6,-1,10), 
-                                                         gas=('H2','He'), 
+                                                         Md_Mg=0.01, 
+                                                         radii = np.linspace(2.,3.,2), 
+                                                         f_plansis= np.logspace(-6,-1,3), 
+                                                         gas=gas, 
                                                          dust=dust, 
                                                          init_m=5.0, 
                                                          L_star=2.)
     store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii)
     pass
 
-def data_sets(Mdots, Md_Mgs, St_alps, radii, final_radius):
+def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
    
-    abund, atom_ab, dust = solar_org_comp(atom_abund=load_protosolar_abundances())
-    for mdot in Mdots:
-        inp = 'mdot_{}_{}'.format(mdot,final_radius)
+    abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
+    for (mdot, radii) in zip(Mdots, radiis):
+        inp = 'mdot_{}_hot'.format(mdot)
         print(inp)
         planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
                                                          atom_ab, 
-                                                         St_alp=1.,
+                                                         St_alp=10.,
                                                          Mdot_gas=mdot,
-                                                         Md_Mg=0.05, 
+                                                         Md_Mg=0.01, 
                                                          radii = radii, 
                                                          f_plansis= np.logspace(-6,-1,10), 
-                                                         gas=('H2','He'), 
+                                                         gas=gas, 
                                                          dust=dust, 
                                                          init_m=5.0, 
                                                          L_star=2.)
         store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius)
     for mdmg in Md_Mgs:
         for st_a in St_alps:
-            inp = 'dust2gas_{}_St2alp{}_{}'.format(mdmg, st_a ,final_radius)
+            inp = 'dust2gas_{}_St2alp{}_hot'.format(mdmg, st_a)
             print(inp)
             planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
                                                          atom_ab, 
                                                          St_alp=st_a,
                                                          Mdot_gas=1e-8,
                                                          Md_Mg=mdmg, 
-                                                         radii = radii, 
+                                                         radii = radii[1], 
                                                          f_plansis= np.logspace(-6,-1,10), 
-                                                         gas=('H2','He'), 
+                                                         gas=gas, 
                                                          dust=dust, 
                                                          init_m=5.0, 
                                                          L_star=2.)
@@ -274,14 +286,16 @@ def data_sets(Mdots, Md_Mgs, St_alps, radii, final_radius):
 
 
 def main():    
-    #default_data()
-    Mdots = (1e-7, 1e-8, 1e-9)
-    Md_Mgs = (1e-2, 5e-2, 1e-1)
-    St_alps = (1e-3, 1., 10.)
-    radii = np.linspace(5., 12., 30)
-    final_radius = 1e-3
+    default_data()
+    #Mdots = (1e-7,1e-8, 1e-9)
+    #Md_Mgs = (1e-2, 5e-2, 1e-1)
+    #St_alps = (1e-2, 1., 10.)
+    #radiis = [np.linspace(3.,5.1, 30), 
+    #          np.linspace(5.5, 7.5, 30), 
+    #          np.linspace(3.5, 5.5, 30)]
+    #final_radius = 1e-3
 
-    data_sets(Mdots, Md_Mgs, St_alps, radii, final_radius)
+    #data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius)
     pass
 
 if '__main__'==__name__:

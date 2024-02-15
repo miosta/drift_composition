@@ -164,7 +164,8 @@ def dk_mig(planet, p_env, disc, T):
     tau_0   = gas_density*vk**2*dist**2*(planet.mass/p_env.mass_star/hr)**2 / Msun
     ang_mom = planet.mass*dist*vk
     v_visc  = visc_mig(planet, p_env, disc, T)
-    a_dot   = np.min(((f_still*f_mig)*v_visc,0.1*v_visc))
+    factor  = np.max((f_still*f_mig,0.1))
+    a_dot   = factor*v_visc
     #print(a_dot/v_visc,  f_mig, f_still)
     #if a_dot > 3*v_visc:
         #print(a_dot, v_visc)
@@ -191,7 +192,7 @@ def pebble_accretion(planet, p_env, disc, T):
     mass_p = planet.mass
     dist   = planet.dist
     hr        = p_env.hr(T,dist)
-    stokes    = p_env.Stokes(disc,dist)
+    stokes    = np.max((p_env.Stokes(disc,dist),1e-10))
     mass_star = p_env.mass_star
     alpha     = p_env.alpha
     _ , sig_dust = p_env.sigs_tot(disc, dist)
@@ -295,8 +296,8 @@ def std_evo_comp(planet, DM, p_env, T, f_plansi, dt, nt, final_radius = 1e-3):
         if planet.dist < final_radius*Rau:
             print('accreted at t = {}; n= {}'.format(nn*dt,nn))
             break
-        if planet.mass > 2e-3:
-            print('2Mjup at t = {}; n= {}'.format(nn*dt,nn))
+        if planet.mass > 1e-3:
+            print('1Mjup at t = {}; n= {}'.format(nn*dt,nn))
             break
     #print(nn,len(planet_evo))
     return planet_evo[:nn], nn
