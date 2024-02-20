@@ -9,16 +9,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class Evolution:
-    def __init__(self, planet_evo, Nt, dt, exclude=()):
+    def __init__(self, planet_evo, Nt, exclude=()):
         self.planet_evo = planet_evo
         self.Nt = Nt
-        self.dt = dt
         self.exclude = exclude
         self.masses = np.array([p.mass for p in planet_evo])
         self.mgs    = np.array([p.mg for p in planet_evo])
         self.mcs    = np.array([p.mc for p in planet_evo])
         self.rs     = np.array([p.dist for p in planet_evo])/Rau
-        self.time   = np.arange(Nt)*dt
+        self.time   = np.array([p.time for p in planet_evo])
     @property
     def f_comps(self):
         names = list(self.planet_evo[0].f_comp.keys())
@@ -94,10 +93,10 @@ def final_comp(evo):
 def crit_mass(evo, threshhold_mass_fraction=0.9):
     return np.argmax(evo.masses/evo.masses[-1]>threshhold_mass_fraction)
 
-def store_data_range(planet_ini, DM, p_env, T, inp='test'):
+def store_test_data(planet_ini, DM, p_env, T, inp='test'):
     f_plansis = np.logspace(-5,0,5)
     radii = np.linspace(7.,9.,5)
-    dts = np.linspace(425,8325,10)
+    dts = np.linspace(425,625,10)
     Nt = 1000
     header = "#mini, mcini, mgini, rini, plans, rfin, mfin, mcfin, mgfin, mgH, mgO, mgC, mdH, mdO, mdC, m10, mg10, mc10, mgH10, mgO10, mgC10, mdH10, mdO10, mdC10, yr \n"
     f = open('{}.txt'.format(inp), 'w')
@@ -134,7 +133,7 @@ def store_data_range(planet_ini, DM, p_env, T, inp='test'):
                     str(fin_atom['H'][1]),
                     str(fin_atom['O'][1]),
                     str(fin_atom['C'][1]),
-                    str(nn*dt)
+                    str(planet_fin.time)
                     )
             f.write('  '.join(data))
             f.write('\n')

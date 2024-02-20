@@ -16,12 +16,13 @@ class Planet:
     mass, mc, mg: float mass of total, core, gas content
     f_comp: dict key - species, values array of [gas, solid] mass
     '''
-    def __init__(self, mass, mc, mg, f_comp, dist=10.0*Rau):
+    def __init__(self, mass, mc, mg, f_comp, dist=10.0*Rau, time =0.):
         self.mass = mass
         self.mc = mc
         self.mg = mg
         self.dist = dist 
         self.f_comp = f_comp
+        self.time = time
     def rhill (self, ms):
         return self.dist*(self.mass/3./ms)**(1./3.)
 
@@ -253,7 +254,7 @@ def mass_growth_pl(planet, p_env, disc, T, dt, plansi_frac):
         for k, v in planet.f_comp.items()
     }
 
-    new_planet = Planet(mc+mg, mc, mg, mol_comp, planet.dist)
+    new_planet = Planet(mc+mg, mc, mg, mol_comp, planet.dist, planet.time+dt)
     return new_planet
 
 def mig_planet(planet, p_env, disc, T, dt):
@@ -287,28 +288,34 @@ def std_evo(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
         rr.append(planet.dist)
     return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
 
-def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt, nt, final_radius = 1e-3):
+def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1e-3):
     planet_evo = np.array([planet_in])
     r_grid     = p_env.grid.Rc
-    dt_adapt   = dt
+    dt_adapt   = dt_ini
+    t          = 0.
     nn = 0
     if final_radius*Rau < r_grid[0]:
         final_radius = 2.* r_grid[0]/Rau
         print('reset final radius to: ', final_radius)
     for nn in range(nt-1):
+        t += dt_adapt
         planet = mass_growth_pl(planet_in, p_env, DM, T, dt_adapt, f_plansi) 
         planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt_adapt) ,1e-4*Rau))
         ir = np.argmin(abs(r_grid-planet.dist))
         dr = r_grid[ir+1]-r_grid[ir]
-        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.4, 5000))
-        print('t=',dt_adapt, '; dx=', dr/Rau,'; r=', planet.dist/Rau)
-        planet_evo = np.append(planet_evo, planet)
+        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.5, 10000))
+        #print('dt=',dt_adapt, '; dx=', dr/Rau,'; r=', planet.dist/Rau)
+        if nn%10==0:
+            planet_evo = np.append(planet_evo, planet)
         planet_in = planet
         if planet.dist < final_radius*Rau:
-            print('accreted at t = {}; n= {}'.format(nn*dt,nn))
+            print('accreted at t = {}; n= {}'.format(planet.time,nn))
             break
-        if planet.mass > 5e-3:
-            print('1Mjup at t = {}; n= {}'.format(nn*dt,nn))
+        elif planet.mass > 5e-3:
+            print('1Mjup at t = {}; n= {}'.format(t,nn))
+            break
+        elif t > 1e7:
+            print('1e7 yr evolution reached ; n= {}'.format(t,nn))
             break
     #print(nn,len(planet_evo))
-    return planet_evo[:nn], nn
+    return planet_evo[:nn//10], nn//10

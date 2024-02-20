@@ -249,7 +249,7 @@ def main():
     planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 4.5*Rau)
 
     planet_evo, nn = dumb.std_evo_comp(planet_ini, DM, p_env, T(grid.Rc),f_plansi, dt, Nt)
-    evolution = Evolution(planet_evo, nn, dt)
+    evolution = Evolution(planet_evo, nn)
     plot_planet(evolution)
     plot_atoms(evolution)    
     evolution = Evolution(planet_evo, nn, dt, exclude=dust)
