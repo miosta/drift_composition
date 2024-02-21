@@ -25,12 +25,12 @@ def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace
 
     for fp in f_plansis:
         for rad in radii:
-            fin_r =final_radius*1.1#*(1+9*np.random.rand())
+            fin_r =final_radius*(1+9*np.random.rand())
             p_ini.dist = rad*Rau
             planet_evo, nn = simp.std_evo_comp(p_ini, DM, p_env, T(p_env.grid.Rc),fp, dt_ini, Nt, final_radius=fin_r)
             planet_fin = planet_evo[-1]
             #print(planet_fin.dist/Rau , fin_r)
-            evo = Evolution(planet_evo, nn)
+            evo = Evolution(planet_evo, nn, exclude=list(p_env.dust.keys()))
             fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo))
             data = (str(planet_ini.mass), 
                     str(planet_ini.mc), 
@@ -41,12 +41,12 @@ def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace
                     str(planet_fin.mass), 
                     str(planet_fin.mc), 
                     str(planet_fin.mg), 
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['H'][0]), 
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['O'][0]), 
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['C'][0]),
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['H'][1]), 
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['O'][1]), 
-                    str(atom_mass(planet_fin.f_comp,exclude=p_env.dust)['C'][1]),
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['H'][0]), 
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['O'][0]), 
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['C'][0]),
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['H'][1]), 
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['O'][1]), 
+                    str(atom_mass(planet_fin.f_comp,exclude=list(p_env.dust.keys()))['C'][1]),
                     str(fin_mass), 
                     str(fin_mc), 
                     str(fin_mg),
@@ -287,13 +287,14 @@ def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
 
 def main():    
     #default_data()
-    Mdots = (1e-7,1e-9)
+    Mdots = (1e-7,)#,1e-9)
     Md_Mgs = ()#1e-2, 5e-2, 1e-1)
     St_alps = ()#1e-2, 1., 10.)
-    radiis = [np.linspace(10.5, 20.1, 20), 
+    radiis = [np.linspace(20.5, 30.5, 20), 
               #np.linspace(6.5, 11.5, 20), 
-              np.linspace(3.5, 5.5, 20)]
-    final_radius = 1e-3
+              #np.linspace(2.0, 3.0, 20)
+             ]
+    final_radius = 1e0
 
     data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius)
     pass
