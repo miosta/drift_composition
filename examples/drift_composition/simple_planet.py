@@ -303,16 +303,24 @@ def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1
         planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt_adapt) ,1e-4*Rau))
         ir = np.argmin(abs(r_grid-planet.dist))
         dr = r_grid[ir+1]-r_grid[ir]
-        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.5, 10000))
-        #print('dt=',dt_adapt, '; dx=', dr/Rau,'; r=', planet.dist/Rau)
+        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.5,
+                        abs(planet_in.mass*5e-2 / gas_accretion(planet_in, p_env, DM, T))*0.5,
+                        10000))
+        dt_adapt = max((dt_adapt, 100))
+        #print('dt=',dt_adapt, 
+        #        '; dx=', dr/Rau,
+        #        '; r=', planet.dist/Rau, 
+        #        '; dm=', gas_accretion(planet, p_env, DM,  T), 
+        #        abs(dr / dk_mig(planet, p_env, DM, T))*0.5,
+        #        abs(planet_in.mass*5e-2 / gas_accretion(planet_in, p_env, DM, T))*0.5)
         if nn%10==0:
             planet_evo = np.append(planet_evo, planet)
         planet_in = planet
         if planet.dist < final_radius*Rau:
             print('accreted at t = {}; n= {}'.format(planet.time,nn))
             break
-        elif planet.mass > 5e-3:
-            print('1Mjup at t = {}; n= {}'.format(t,nn))
+        elif planet.mass > 2e-3:
+            print('2Mjup at t = {}; n= {}'.format(t,nn))
             break
         elif t > 1e7:
             print('1e7 yr evolution reached ; n= {}'.format(t,nn))

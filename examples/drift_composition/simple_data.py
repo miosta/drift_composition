@@ -176,6 +176,7 @@ def solar_org_comp(atom_abund=load_protosolar_abundances()):
     C_org = atom_abund['C'] - Ctot 
     mol_abund['C2H6'] = C_org * 0.25 / 2 
     mol_abund['C4H10'] = C_org * 0.75 / 4
+    mol_abund['CH3OH'] = C_org * 0.0
 
     return mol_abund, atom_abund, dust, gas
 
@@ -198,7 +199,7 @@ def set_env(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = n
     alp = 1e-3
     alpha = lambda R: alp
     grid = Grid(0.0005*Rau, 100*Rau, 512)
-    T = lambda R: 50*(R/Rau)**(-0.5)#create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
+    T = lambda R: 100*(R/Rau)**(-0.5)#create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
 
     DM = DiscModel(grid, Mdot_gas, alpha, T, mu)
 
@@ -252,7 +253,7 @@ def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
    
     abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
     for (mdot, radii) in zip(Mdots, radiis):
-        inp = 'mdot_{}_hot2'.format(mdot)
+        inp = 'mdot_{}_100K'.format(mdot)
         print(inp)
         planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
                                                          atom_ab, 
@@ -268,7 +269,7 @@ def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
         store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius)
     for mdmg in Md_Mgs:
         for st_a in St_alps:
-            inp = 'dust2gas_{}_St2alp{}_hot2'.format(mdmg, st_a)
+            inp = 'dust2gas_{}_St2alp{}_100K'.format(mdmg, st_a)
             print(inp)
             planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
                                                          atom_ab, 
@@ -287,14 +288,14 @@ def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
 
 def main():    
     #default_data()
-    Mdots = (1e-7,)#,1e-9)
-    Md_Mgs = ()#1e-2, 5e-2, 1e-1)
-    St_alps = ()#1e-2, 1., 10.)
-    radiis = [np.linspace(20.5, 30.5, 20), 
-              #np.linspace(6.5, 11.5, 20), 
-              #np.linspace(2.0, 3.0, 20)
+    Mdots = (1e-7, 1e-8, 1e-9)
+    Md_Mgs = (1e-2, 5e-2, 1e-1)
+    St_alps = (1e-2, 1., 10.)
+    radiis = [np.linspace(10.5, 20.5, 20), 
+              np.linspace(7.5, 12.5, 20), 
+              np.linspace(3.0, 7.0, 20)
              ]
-    final_radius = 1e0
+    final_radius = 1e-3
 
     data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius)
     pass

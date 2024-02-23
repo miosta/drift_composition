@@ -42,6 +42,7 @@ def deplete_CO_abundance(abund, fraction, species):
 def depletion(mol_abund, atom_abund, fraction, mol):
     print(mol)
     if fraction > 0:
+        print('depleting to', mol)
         abund = deplete_CO_abundance(mol_abund, fraction, mol)
     else:
         abund = mol_abund
@@ -76,7 +77,8 @@ def set_env_dp(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii 
     alp = 1e-3
     alpha = lambda R: alp
     grid = Grid(0.0005*Rau, 100*Rau, 512)
-    T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
+    #T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
+    T = lambda R: 200*(R/Rau)**(-0.5)
     DM = create_disc(St_alp, Mdot_gas, Md_Mg, L_star, mu, T, grid, alp)
 
     #Set up chemistry
@@ -136,7 +138,7 @@ def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
 def depletion_sets(depl_fracs, depl_specs, radii, final_radius):
     abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
     for (df, ds) in zip(depl_fracs, depl_specs):
-        inp = 'depl_{}_{}'.format(ds,df)
+        inp = 'depl2_{}_{}'.format(ds,df)
         print(inp)
         planet_ini, DM, p_env, T, f_plansis, radii = set_env_dp(abund,
                                                          atom_ab, 
@@ -158,11 +160,11 @@ def depletion_sets(depl_fracs, depl_specs, radii, final_radius):
 
 def main():    
     #default_data()
-    depl_specs= [['C2H6',], ['CO2',], ['C4H10']]
-    depl_fracs= [[0.9] ,[0.9] ,[0.9]]
-    radiis = np.linspace(7.5, 15.5, 20)
+    depl_specs= [['C2H6',], ['CO2',], ['CH3OH'], ['C4H10']]
+    depl_fracs= [[0.9] ,[0.9] ,[0.9], [0.9]]
+    radiis = np.linspace(6.5, 16.5, 100)
              
-    final_radius = 1e-2
+    final_radius = 1e-3
 
     depletion_sets(depl_fracs, depl_specs, radiis, final_radius)
     pass
