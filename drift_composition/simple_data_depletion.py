@@ -13,6 +13,58 @@ from scipy.interpolate import PchipInterpolator
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+def solar_org_comp(atom_abund=load_protosolar_abundances()):
+
+# Oxygen / Nitrogen / Noble gases
+    mol_abund = {
+        'H2O' : atom_abund['O'] / 3,
+        'CO'  : atom_abund['O'] / 6,
+        'CO2' : atom_abund['O'] / 12,
+    
+        'N2'  : atom_abund['N'] * 0.45,
+        'NH3' : atom_abund['N'] * 0.1,
+
+        #'He' : atom_abund['He'], 
+        'Ar' : atom_abund['Ar'], 
+        'Kr' : 1.8e-9,
+        'Xe' : 1.7e-10,
+    }
+    grain_abund = {
+        'MgFeSiO4' : atom_abund['O'] / 12,
+        'P'  : atom_abund['P'],
+        'S'  : atom_abund['S'],
+        'Na' : atom_abund['Na'],
+        'K'  : atom_abund['K'],
+    }
+    gas_abund = {
+        'H2' : atom_abund['H']/2,
+        'He'  : atom_abund['He'],
+    }
+    dust = {n: g / np.sum(list(grain_abund.values())) for n,g in grain_abund.items()}
+    gas  = {n: g / np.sum(list(gas_abund.values())) for n,g in gas_abund.items()}
+
+# Count up the total carbon/oxygen abundance
+    Ctot = 0
+    for mol in mol_abund:
+        atoms = atoms_in_molecule(mol)
+        if 'C' in atoms:
+            Ctot += mol_abund[mol] * atoms['C']
+
+    for mol in grain_abund:
+        atoms = atoms_in_molecule(mol)
+        if 'C' in atoms:
+            Ctot += grain_abund[mol] * atoms['C']
+
+    # Put the rest into ethane / refractory carbon:
+    C_org = atom_abund['C'] - Ctot 
+    mol_abund['CH4'] = C_org * 0.25 / 1 
+    mol_abund['C4H10'] = C_org * 0.75 / 4
+    mol_abund['CH3OH'] = C_org * 0.0
+    mol_abund['C2H6'] = C_org * 0.0
+
+    return mol_abund, atom_abund, dust, gas
+
 def deplete_CO_abundance(abund, fraction, species):
     """Convert a given fraction of CO into a different species. Any 
     excess/deficit of oxygen is assumed to change the water abundance"""
@@ -39,16 +91,7 @@ def deplete_CO_abundance(abund, fraction, species):
 
     return new
 
-def depletion(mol_abund, atom_abund, fraction, mol):
-    print(mol)
-    if fraction > 0:
-        abund = deplete_CO_abundance(mol_abund, fraction, mol)
-    else:
-        abund = mol_abund
-    spec, abund = get_species_info(mol_abund,atom_abund)
-    return spec, abund
-
-def create_disc(St_alp, Mdot_gas, Md_Mg, L_star, mu, T, grid, alp):  
+def create_disc(St_alp, Mdot_gas, Md_Mg, mu, T, grid, alp):  
     #Set up disc dynamics
     alpha = lambda R: alp
     
@@ -63,21 +106,22 @@ def create_disc(St_alp, Mdot_gas, Md_Mg, L_star, mu, T, grid, alp):
 
 def create_chemistry(mol_abund, atom_abund, DM, depl_fracs, depl_specs):
     specs, abund = get_species_info(mol_abund, atom_abund)
-    for (df, ds) in zip(depl_fracs,depl_specs):
-        species, abundances = depletion(mol_abund, atom_abund, df, ds)
+    abundance = deplete_CO_abundance(mol_abund, depl_fracs, depl_specs) 
+    print(depl_specs, abundance[depl_specs])
 
-    DM.compute_chemistry(species, abundances )
-    print([(spec.name) for spec in species], abundances)
-    return DM, species, abundances
+    DM.compute_chemistry(specs, list(abundance.values()))
+    print('cheminstry done')
+    return DM, specs, abundance
     
 
-def set_env_dp(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = np.linspace(7.,9.,10), f_plansis= np.logspace(-6,-1,10), gas={'H2':0.912,'He':0.087}, dust={'MgFeSiO4':3.235e-5}, init_m=5.0, mu=2.35, L_star=2., m_star=1.4, depl_frac=(), depl_spec=()):
+def set_env_dp(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii = np.linspace(7.,9.,10), f_plansis= np.logspace(-6,-1,10), gas={'H2':0.912,'He':0.087}, dust={'MgFeSiO4':3.235e-5}, init_m=5.0, mu=2.35, T0=150, m_star=1.4, depl_frac=(), depl_spec=()):
 
     alp = 1e-3
     alpha = lambda R: alp
     grid = Grid(0.0005*Rau, 100*Rau, 512)
-    T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
-    DM = create_disc(St_alp, Mdot_gas, Md_Mg, L_star, mu, T, grid, alp)
+    #T = create_temperature_profile(grid, L_star, Mdot_gas, alpha, mu=mu)
+    T = lambda R: T0*(R/Rau)**(-0.5)
+    DM = create_disc(St_alp, Mdot_gas, Md_Mg, mu, T, grid, alp)
 
     #Set up chemistry
     DM, species, abundances = create_chemistry(mol_abund, atom_abund, DM, depl_frac, depl_spec)
@@ -90,81 +134,50 @@ def set_env_dp(mol_abund, atom_abund, St_alp=1.,Mdot_gas=1e-8, Md_Mg=0.1, radii 
         f_comp[d] = np.zeros(2)
     p_env = PlanetEnv(grid, alpha(grid.Rc), mu, m_star, gas, dust)
 
-    #Set up iniital planet
+    #Set up initial planet
     frac_gc = 0.01
     planet_ini = Planet(init_m*Mearth/Msun, init_m*(1-frac_gc)*Mearth/Msun, init_m*(frac_gc)*Mearth/Msun, f_comp, 8.5*Rau)
 
     return planet_ini, DM, p_env, T, f_plansis, radii
     #Set up sample data
 
-def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius):
-   
-    abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
-    for (mdot, radii) in zip(Mdots, radiis):
-        inp = 'mdot_{}_hot2'.format(mdot)
-        print(inp)
-        planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
-                                                         atom_ab, 
-                                                         St_alp=10.,
-                                                         Mdot_gas=mdot,
-                                                         Md_Mg=0.01, 
-                                                         radii = radii, 
-                                                         f_plansis= np.logspace(-6,-1,5), 
-                                                         gas=gas, 
-                                                         dust=dust, 
-                                                         init_m=5.0, 
-                                                         L_star=2.)
-        store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius)
-    for mdmg in Md_Mgs:
-        for st_a in St_alps:
-            inp = 'dust2gas_{}_St2alp{}_hot2'.format(mdmg, st_a)
-            print(inp)
-            planet_ini, DM, p_env, T, f_plansis, radii = set_env(abund,
-                                                         atom_ab, 
-                                                         St_alp=st_a,
-                                                         Mdot_gas=1e-8,
-                                                         Md_Mg=mdmg, 
-                                                         radii = radiis[1], 
-                                                         f_plansis= np.logspace(-6,-1,5), 
-                                                         gas=gas, 
-                                                         dust=dust, 
-                                                         init_m=5.0, 
-                                                         L_star=2.)
-            store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius)
-    pass
-
-def depletion_sets(depl_fracs, depl_specs, radii, final_radius):
+def depletion_sets(depl_fracs, depl_specs, radii, final_radius, T0, si):
     abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
     for (df, ds) in zip(depl_fracs, depl_specs):
-        inp = 'depl_{}_{}'.format(ds,df)
+        if si:
+            inp = 'depl_{}_{}_{}K_Si_drift'.format(ds,df,T0)
+        else:
+            inp = 'depl_{}_{}_{}K_noSi_drift'.format(ds,df,T0)
         print(inp)
         planet_ini, DM, p_env, T, f_plansis, radii = set_env_dp(abund,
                                                          atom_ab, 
-                                                         St_alp=10.,
+                                                         St_alp=10,
                                                          Mdot_gas=1e-8,
                                                          Md_Mg=0.01, 
                                                          radii = radii, 
-                                                         f_plansis= np.logspace(-6,-1,5), 
+                                                         f_plansis= np.logspace(-5,0,20), 
                                                          gas=gas, 
                                                          dust=dust,
                                                          init_m=5.0, 
-                                                         L_star=2.,
+                                                         T0=T0,
                                                          depl_frac=df,
                                                          depl_spec=ds
                                                          )
-        store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius)
+        store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius, si=si)
     pass
 
 
 def main():    
     #default_data()
-    depl_specs= [['C2H6',], ['CO2',], ['C4H10']]
-    depl_fracs= [[0.9] ,[0.9] ,[0.9]]
-    radiis = np.linspace(7.5, 15.5, 20)
+    depl_specs= ['CH3OH', 'C2H6', 'CO2', 'C4H10']
+    depl_fracs= [0.9 ,0.9 ,0.9, 0.9]
+    radiis = np.linspace(6.5, 16.5, 25)
              
-    final_radius = 1e-2
+    final_radius = 1e-3
+    T0 = 150
 
-    depletion_sets(depl_fracs, depl_specs, radiis, final_radius)
+    for si in (True,False):
+        depletion_sets(depl_fracs, depl_specs, radiis, final_radius, T0, si =si)
     pass
 
 if '__main__'==__name__:
