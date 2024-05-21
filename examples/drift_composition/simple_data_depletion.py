@@ -151,11 +151,11 @@ def depletion_sets(depl_fracs, depl_specs, radii, final_radius, T0, si):
         print(inp)
         planet_ini, DM, p_env, T, f_plansis, radii = set_env_dp(abund,
                                                          atom_ab, 
-                                                         St_alp=10,
+                                                         St_alp=10.,
                                                          Mdot_gas=1e-8,
                                                          Md_Mg=0.01, 
                                                          radii = radii, 
-                                                         f_plansis= np.logspace(-5,0,20), 
+                                                         f_plansis= np.logspace(-5,0,30), 
                                                          gas=gas, 
                                                          dust=dust,
                                                          init_m=5.0, 
@@ -171,7 +171,7 @@ def main():
     #default_data()
     depl_specs= ['CH3OH', 'C2H6', 'CO2', 'C4H10']
     depl_fracs= [0.9 ,0.9 ,0.9, 0.9]
-    radiis = np.linspace(6.5, 16.5, 25)
+    radiis = np.linspace(6.5, 15.5, 50)
              
     final_radius = 1e-3
     T0 = 150

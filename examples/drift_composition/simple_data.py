@@ -36,7 +36,7 @@ def store_data_range(planet_ini, DM, p_env, T, inp='test', f_plansis=np.logspace
                 exc = list(p_env.dust.keys())
             #print('Si',si)
             evo = Evolution(planet_evo, nn, exclude=exc)
-            fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo))
+            fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo, threshhold_mass_fraction=0.9))
             data = (str(planet_ini.mass), 
                     str(planet_ini.mc), 
                     str(planet_ini.mg), 
