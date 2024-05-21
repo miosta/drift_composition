@@ -107,7 +107,7 @@ def store_test_data(planet_ini, DM, p_env, T, inp='test'):
             planet_ini.dist = rad*Rau
             planet_evo, nn = dumb.std_evo_comp(planet_ini, DM, p_env, T(p_env.grid.Rc),fp, dt, Nt)
             planet_fin = planet_evo[-1]
-            evo = Evolution(planet_evo, nn, dt)
+            evo = Evolution(planet_evo, dt, exclude=list(p_env.dust.keys()))
             fin_mass, fin_mc, fin_mg, fin_comp, fin_atom = final_accretion(evo, crit_mass(evo))
             data = (str(planet_ini.mass), 
                     str(planet_ini.mc), 

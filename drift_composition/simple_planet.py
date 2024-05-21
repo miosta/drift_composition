@@ -221,7 +221,7 @@ def pebble_accretion(planet, p_env, disc, T):
     r_hill = planet.rhill(mass_star)
     
     v_hill = r_hill * np.sqrt(mass_star*G_Msun / dist**3)
-    h_peb = hr * dist * np.sqrt(alpha / stokes)
+    h_peb = hr * dist / np.sqrt(1 + stokes/alpha)
     dm_2d = min(2.0 * (stokes / 0.1)**(2. / 3.) * r_hill * v_hill * pebble_density,2.0 * r_hill * v_hill * pebble_density)
     dm_3d = dm_2d * (r_hill * np.pi**0.5 / 2**1.5 / h_peb *(stokes/0.1)**(1./3.))
     crit_h = np.pi* (stokes/0.1)**(1./3.) * r_hill /2/np.sqrt(2*np.pi)
@@ -303,16 +303,24 @@ def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1
         planet.dist = np.max((mig_planet(planet, p_env, DM, T, dt_adapt) ,1e-4*Rau))
         ir = np.argmin(abs(r_grid-planet.dist))
         dr = r_grid[ir+1]-r_grid[ir]
-        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.5, 10000))
-        #print('dt=',dt_adapt, '; dx=', dr/Rau,'; r=', planet.dist/Rau)
+        dt_adapt = min((abs(dr / dk_mig(planet, p_env, DM, T))*0.5,
+                        abs(planet_in.mass*5e-2 / gas_accretion(planet_in, p_env, DM, T))*0.5,
+                        10000))
+        dt_adapt = max((dt_adapt, 100))
+        #print('dt=',dt_adapt, 
+        #        '; dx=', dr/Rau,
+        #        '; r=', planet.dist/Rau, 
+        #        '; dm=', gas_accretion(planet, p_env, DM,  T), 
+        #        abs(dr / dk_mig(planet, p_env, DM, T))*0.5,
+        #        abs(planet_in.mass*5e-2 / gas_accretion(planet_in, p_env, DM, T))*0.5)
         if nn%10==0:
             planet_evo = np.append(planet_evo, planet)
         planet_in = planet
         if planet.dist < final_radius*Rau:
             print('accreted at t = {}; n= {}'.format(planet.time,nn))
             break
-        elif planet.mass > 5e-3:
-            print('1Mjup at t = {}; n= {}'.format(t,nn))
+        elif planet.mass > 2e-3:
+            print('2Mjup at t = {}; n= {}'.format(t,nn))
             break
         elif t > 1e7:
             print('1e7 yr evolution reached ; n= {}'.format(t,nn))

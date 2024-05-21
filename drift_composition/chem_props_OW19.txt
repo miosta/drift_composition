@@ -2,6 +2,7 @@
 H2O       1.6e-4   4.0e13 5800   0     1.0      Fraser_2001
 CO2       4.0e-5   1.0e13 2700   0     1.0      Sandford_1990
 CO        8.0e-5   7.0e11 1180   0     1.0      Fayolle_2016
+CH4       0.0e-0   -1     1250   0     1.0      Penteado_2017
 C2H6      1.5e-5   6.0e16 2500   0     1.0      Behmard_2019
 CH3OH     0.0e-0   -1     4930   0     1.0      Penteado_2017
 N2        3.0e-5   8.0e11 1050   0     1.0      Fayolle_2016

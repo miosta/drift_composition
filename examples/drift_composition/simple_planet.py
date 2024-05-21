@@ -221,7 +221,7 @@ def pebble_accretion(planet, p_env, disc, T):
     r_hill = planet.rhill(mass_star)
     
     v_hill = r_hill * np.sqrt(mass_star*G_Msun / dist**3)
-    h_peb = hr * dist * np.sqrt(alpha / stokes)
+    h_peb = hr * dist / np.sqrt(1 + stokes/alpha)
     dm_2d = min(2.0 * (stokes / 0.1)**(2. / 3.) * r_hill * v_hill * pebble_density,2.0 * r_hill * v_hill * pebble_density)
     dm_3d = dm_2d * (r_hill * np.pi**0.5 / 2**1.5 / h_peb *(stokes/0.1)**(1./3.))
     crit_h = np.pi* (stokes/0.1)**(1./3.) * r_hill /2/np.sqrt(2*np.pi)
