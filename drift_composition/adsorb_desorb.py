@@ -202,7 +202,7 @@ class ThermalDesorbtionRate:
         R = self._species.nu * np.exp(-self._species.T_bind / T)
 
         n_grain = Sigma_dust / self._grain.mass(a_max)
-        area = self._grain.area(a_max)
+        area = 4 * self._grain.area(a_max)
 
         num_layers = 0
         if self._species.order == 0:  # Only the top layer is active
