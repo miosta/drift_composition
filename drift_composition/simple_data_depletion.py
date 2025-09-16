@@ -164,6 +164,16 @@ def depletion_sets(depl_fracs, depl_specs, radii, final_radius, T0, si):
                                                          depl_spec=ds
                                                          )
         store_data_range(planet_ini, DM, p_env, T, inp = inp, f_plansis=f_plansis, radii = radii, final_radius=final_radius, si=si)
+        species, abundances = get_species_info(abund, atom_ab)
+
+        f = open('{}/chem_{}{}.txt'.format(folder,ds,df), 'w')
+        printing = (abundances, abundances/atom_ab['H'])
+        f.write('; '.join([str(spec.name) for spec in species]))
+        f.write('\n')
+        f.write('; '.join([str(a) for a in abundances]))
+        f.write('\n')
+        f.write('; '.join([str(a) for a in abundances/atom_ab['H']]))
+        f.close()
     pass
 
 

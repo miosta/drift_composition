@@ -257,6 +257,19 @@ def default_data():
 def data_sets(Mdots, Md_Mgs, St_alps, radiis, final_radius, T0, si, mdot_alp=(0.01,10)):
    
     abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
+
+    abund, atom_ab, dust, gas = solar_org_comp(atom_abund=load_protosolar_abundances())
+    species, abundances = get_species_info(abund, atom_ab)
+
+    f = open('{}/chem.txt'.format(folder), 'w')
+    printing = (abundances, abundances/atom_ab['H'])
+    f.write('; '.join([str(spec.name) for spec in species]))
+    f.write('\n')
+    f.write('; '.join([str(a) for a in abundances]))
+    f.write('\n')
+    f.write('; '.join([str(a) for a in abundances/atom_ab['H']]))
+    f.close()
+
     for (mdot, radii) in zip(Mdots, radiis):
         for ma in mdot_alp:
             if si:
