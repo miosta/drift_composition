@@ -108,6 +108,17 @@ class PlanetEnv:
         cs = np.sqrt(k_boltzmann/self.mu/m_hydrogen*temp)  #TODO: Check mu is used the same way
         return cs/(np.sqrt(self.mass_star*G_Msun/dist))
 
+    def sound_speed(self, T, dist):
+        temp = loc_disc(T, self.grid.Rc, dist) 
+        return np.sqrt(k_boltzmann/self.mu/m_hydrogen*temp)
+
+    def R_Hill(self, planet):
+        return planet.dist*(planet.mass/self.mass_star/3.)**(1./3.)
+
+    def eta(self, dist, T):
+        """Fractional sub-keplerian rotation"""
+        return - 0.5*( - 2.5) * self.hr(T, dist)**2
+
 
 def gap_dens(planet,p_env,disc,T):
     '''Kanagawa 2018, cross flow K description'''
