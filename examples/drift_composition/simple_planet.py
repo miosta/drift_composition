@@ -5,7 +5,12 @@ from drift_composition.atoms import molecule_mass
 def loc_disc (g_val, Rg, dist):
     cid = np.argmin(np.abs(Rg-dist))
     #loc_val = g_val[cid]
-    d_val = (g_val[cid+1]-g_val[cid-1])/(Rg[cid+1]-Rg[cid-1])
+    #print(cid, len(g_val))
+    if cid==0 or cid>=len(g_val)-1:
+        d_val = 0
+        cid = abs(cid-1)
+    else:
+        d_val = (g_val[cid+1]-g_val[cid-1])/(Rg[cid+1]-Rg[cid-1])
     loc_val = g_val[cid] + d_val*(dist-Rg[cid])
     return loc_val
 
@@ -111,6 +116,12 @@ class PlanetEnv:
     def sound_speed(self, T, dist):
         temp = loc_disc(T, self.grid.Rc, dist) 
         return np.sqrt(k_boltzmann/self.mu/m_hydrogen*temp)
+
+    def rho_cgs_z(self, T, dist, disc, z=0):
+        """Density in cgs"""
+        H = self.hr(T, dist) * dist
+        sig, _ = self.sigs_tot(disc,dist)
+        return sig*np.exp(-0.5*z*z/H**2)/(np.sqrt(2*np.pi)*H)
 
     def R_Hill(self, planet):
         return planet.dist*(planet.mass/self.mass_star/3.)**(1./3.)

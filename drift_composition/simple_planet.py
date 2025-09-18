@@ -5,7 +5,12 @@ from drift_composition.atoms import molecule_mass
 def loc_disc (g_val, Rg, dist):
     cid = np.argmin(np.abs(Rg-dist))
     #loc_val = g_val[cid]
-    d_val = (g_val[cid+1]-g_val[cid-1])/(Rg[cid+1]-Rg[cid-1])
+    #print(cid, len(g_val))
+    if cid==0 or cid>=len(g_val)-1:
+        d_val = 0
+        cid = abs(cid-1)
+    else:
+        d_val = (g_val[cid+1]-g_val[cid-1])/(Rg[cid+1]-Rg[cid-1])
     loc_val = g_val[cid] + d_val*(dist-Rg[cid])
     return loc_val
 
@@ -107,6 +112,23 @@ class PlanetEnv:
         temp = loc_disc(T, self.grid.Rc, dist) 
         cs = np.sqrt(k_boltzmann/self.mu/m_hydrogen*temp)  #TODO: Check mu is used the same way
         return cs/(np.sqrt(self.mass_star*G_Msun/dist))
+
+    def sound_speed(self, T, dist):
+        temp = loc_disc(T, self.grid.Rc, dist) 
+        return np.sqrt(k_boltzmann/self.mu/m_hydrogen*temp)
+
+    def rho_cgs_z(self, T, dist, disc, z=0):
+        """Density in cgs"""
+        H = self.hr(T, dist) * dist
+        sig, _ = self.sigs_tot(disc,dist)
+        return sig*np.exp(-0.5*z*z/H**2)/(np.sqrt(2*np.pi)*H)
+
+    def R_Hill(self, planet):
+        return planet.dist*(planet.mass/self.mass_star/3.)**(1./3.)
+
+    def eta(self, dist, T):
+        """Fractional sub-keplerian rotation"""
+        return - 0.5*( - 2.5) * self.hr(T, dist)**2
 
 
 def gap_dens(planet,p_env,disc,T):
@@ -288,7 +310,7 @@ def std_evo(planet, DM, p_env, T, f_plansi, dt, nt, comp='CO'):
         rr.append(planet.dist)
     return np.array(masses),np.array(mcs),np.array(mgs),np.array(mco_g),np.array(mco_d),np.array(rr)
 
-def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1e-3, final_time=1e7):
+def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1e-3):
     planet_evo = np.array([planet_in])
     r_grid     = p_env.grid.Rc
     dt_adapt   = dt_ini
@@ -322,34 +344,8 @@ def std_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_radius = 1
         elif planet.mass > 2e-3:
             print('2Mjup at t = {}; n= {}'.format(t,nn))
             break
-        elif t > final_time:
+        elif t > 1e7:
             print('1e7 yr evolution reached ; n= {}'.format(t,nn))
-            break
-    #print(nn,len(planet_evo))
-    return planet_evo[:nn//10], nn//10
-
-def no_mig_evo_comp(planet_in, DM, p_env, T, f_plansi, dt_ini, nt, final_time=1e7):
-    planet_evo = np.array([planet_in])
-    r_grid     = p_env.grid.Rc
-    dt_adapt   = dt_ini
-    t          = 0.
-    nn = 0
-    for nn in range(nt-1):
-        t += dt_adapt
-        planet = mass_growth_pl(planet_in, p_env, DM, T, dt_adapt, f_plansi) 
-        ir = np.argmin(abs(r_grid-planet.dist))
-        dr = r_grid[ir+1]-r_grid[ir]
-        dt_adapt = min((abs(planet_in.mass*5e-2 / gas_accretion(planet_in, p_env, DM, T))*0.5,
-                        10000))
-        dt_adapt = max((dt_adapt, 100))
-        if nn%10==0:
-            planet_evo = np.append(planet_evo, planet)
-        planet_in = planet
-        if planet.mass > 2e-3:
-            print('2Mjup at t = {}; n= {}, r={}'.format(t,nn,planet.dist/Rau))
-            break
-        elif t > final_time:
-            print('{} yr evolution reached ; n= {}, r={}'.format(t,nn,planet.dist/Rau))
             break
     #print(nn,len(planet_evo))
     return planet_evo[:nn//10], nn//10

@@ -113,6 +113,11 @@ class DiscModel:
         )
         self._lnP_interp = PchipInterpolator(g.Rc, np.log(self._P_mid))
 
+    def rho_cgs_z(self, R, z=0):
+        """Density in cgs"""
+        H = self.aspect_ratio(R) * R
+        return self.Sigma_gas*np.exp(-0.5*z*z/H**2)/(np.sqrt(2*np.pi)*H)
+
     def compute_dust_surface_density(self, Mdot_dust, St, Sc=1):
         """Compute the dust surface density and store it in self.Sigma_dust
 
